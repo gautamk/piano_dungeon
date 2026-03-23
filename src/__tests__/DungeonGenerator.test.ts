@@ -54,7 +54,7 @@ describe('generateFloor', () => {
     for (const room of rooms) {
       if (room.type === ROOM_TYPE.COMBAT || room.type === ROOM_TYPE.ELITE || room.type === ROOM_TYPE.BOSS) {
         expect(room.enemy).not.toBeNull();
-        expect(room.enemy.currentHp).toBeGreaterThan(0);
+        expect(room.enemy!.currentHp).toBeGreaterThan(0);
       }
     }
   });
@@ -64,7 +64,7 @@ describe('generateFloor', () => {
     const floor5 = generateFloor(5, 42);
     const boss1 = floor1.find(r => r.type === ROOM_TYPE.BOSS);
     const boss5 = floor5.find(r => r.type === ROOM_TYPE.BOSS);
-    expect(boss5.enemy.currentHp).toBeGreaterThan(boss1.enemy.currentHp);
+    expect(boss5!.enemy!.currentHp).toBeGreaterThan(boss1!.enemy!.currentHp);
   });
 
   it('first room is always COMBAT type', () => {

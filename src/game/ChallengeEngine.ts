@@ -1,3 +1,8 @@
+import type {
+  Challenge, NoteChallenge, IntervalChallenge, ScaleChallenge,
+  ChordChallenge, MelodyChallenge, ChallengeType, EvaluationResult,
+  Enemy, GameState, Song,
+} from '../types.js';
 import { GAME_CONFIG } from '../config.js';
 import { NOTE_NAMES, SCALES, CHORDS, CHALLENGE_ROOTS, getAvailableIntervals } from '../data/music.js';
 import { semitoneMatches } from '../audio/NoteMapper.js';
@@ -8,17 +13,17 @@ export const CHALLENGE_TYPE = {
   SCALE: 'SCALE',
   CHORD: 'CHORD',
   MELODY: 'MELODY',
-};
+} as const satisfies Record<ChallengeType, ChallengeType>;
 
 // Seeded random pick (simple version for challenge gen)
-function randPick(arr) {
+function randPick<T>(arr: T[]): T {
   return arr[Math.floor(Math.random() * arr.length)];
 }
 
 /**
  * Build a challenge object based on type and current floor.
  */
-export function generateChallenge(type, floor) {
+export function generateChallenge(type: ChallengeType, floor: number): Challenge {
   const root = randPick(CHALLENGE_ROOTS);
 
   if (type === CHALLENGE_TYPE.NOTE) {
@@ -28,13 +33,13 @@ export function generateChallenge(type, floor) {
       : CHALLENGE_ROOTS;
     const target = randPick(roots);
     return {
-      type,
+      type: 'NOTE',
       label: `Play  ${target.name}`,
       targets: [{ semitone: target.semitone, octave: target.octave }],
       sequence: [target.semitone], // expected sequence of semitones
       progress: 0,
       timeMs: GAME_CONFIG.timing.noteWindowMs,
-    };
+    } satisfies NoteChallenge;
   }
 
   if (type === CHALLENGE_TYPE.INTERVAL) {
@@ -44,13 +49,13 @@ export function generateChallenge(type, floor) {
     const interval = randPick(availableIntervals);
     const targetSemitone = (root.semitone + interval.semitones) % 12;
     return {
-      type,
+      type: 'INTERVAL',
       label: `${root.name}  →  ${interval.name}`,
       hint: `Play ${NOTE_NAMES[root.semitone]}, then ${NOTE_NAMES[targetSemitone]}`,
       sequence: [root.semitone, targetSemitone],
       progress: 0,
       timeMs: GAME_CONFIG.timing.noteWindowMs + 1500,
-    };
+    } satisfies IntervalChallenge;
   }
 
   if (type === CHALLENGE_TYPE.SCALE) {
@@ -60,13 +65,13 @@ export function generateChallenge(type, floor) {
     const scale = randPick(availableScales);
     const sequence = scale.intervals.map(i => (root.semitone + i) % 12);
     return {
-      type,
+      type: 'SCALE',
       label: `${NOTE_NAMES[root.semitone]} ${scale.name} Scale`,
       hint: sequence.map(s => NOTE_NAMES[s]).join('  '),
       sequence,
       progress: 0,
       timeMs: scale.intervals.length * GAME_CONFIG.timing.sequenceNoteWindowMs,
-    };
+    } satisfies ScaleChallenge;
   }
 
   if (type === CHALLENGE_TYPE.CHORD) {
@@ -77,7 +82,7 @@ export function generateChallenge(type, floor) {
     const required = new Set(chord.intervals.map(i => (root.semitone + i) % 12));
     const noteNames = [...required].map(s => NOTE_NAMES[s]).join(' - ');
     return {
-      type,
+      type: 'CHORD',
       label: `${NOTE_NAMES[root.semitone]}${chord.symbol || ''} ${chord.name} Chord`,
       hint: `Arpeggiate: ${noteNames}`,
       sequence: [...required], // order doesn't matter for chords
@@ -85,7 +90,7 @@ export function generateChallenge(type, floor) {
       played: new Set(),
       progress: 0,
       timeMs: chord.intervals.length * GAME_CONFIG.timing.sequenceNoteWindowMs + 1000,
-    };
+    } satisfies ChordChallenge;
   }
 
   return generateChallenge(CHALLENGE_TYPE.NOTE, floor);
@@ -95,7 +100,7 @@ export function generateChallenge(type, floor) {
  * Build a MELODY challenge from a specific song phrase.
  * Called by StateMachine when enemy.song is set or practice mode is active.
  */
-export function generateMelodyChallenge(song, phraseIndex) {
+export function generateMelodyChallenge(song: Song, phraseIndex: number): MelodyChallenge {
   const phrase = song.phrases[phraseIndex % song.phrases.length];
   const sequence = phrase.map(n => n.semitone);
   const octaves = phrase.map(n => n.octave);
@@ -103,7 +108,7 @@ export function generateMelodyChallenge(song, phraseIndex) {
   const totalMs = phrase.reduce((acc, n) => acc + n.durationMs, 0);
 
   return {
-    type: CHALLENGE_TYPE.MELODY,
+    type: 'MELODY',
     song,
     phraseIndex,
     label: song.title,
@@ -118,8 +123,8 @@ export function generateMelodyChallenge(song, phraseIndex) {
 /**
  * Pick a challenge type based on enemy's weight table and floor.
  */
-export function pickChallengeType(enemy, floor) {
-  const weights = { ...enemy.challengeWeights };
+export function pickChallengeType(enemy: Enemy, floor: number): ChallengeType {
+  const weights = { ...enemy.challengeWeights } as Record<string, number>;
 
   // Zero out challenge types not yet available on this floor
   if (getAvailableIntervals(floor).length === 0) weights.INTERVAL = 0;
@@ -134,7 +139,7 @@ export function pickChallengeType(enemy, floor) {
   let roll = Math.random() * total;
   for (const [type, w] of Object.entries(weights)) {
     roll -= w;
-    if (roll <= 0) return type;
+    if (roll <= 0) return type as ChallengeType;
   }
   return CHALLENGE_TYPE.NOTE;
 }
@@ -145,7 +150,10 @@ export function pickChallengeType(enemy, floor) {
  *
  * Mutates challenge.progress and challenge.played.
  */
-export function evaluateNote(challenge, detectedNote) {
+export function evaluateNote(
+  challenge: Challenge | null,
+  detectedNote: { semitone: number } | null
+): EvaluationResult | null {
   if (!detectedNote || !challenge) return null;
 
   const { semitone } = detectedNote;
@@ -205,7 +213,7 @@ export function evaluateNote(challenge, detectedNote) {
 /**
  * Compute damage dealt to enemy on success (scales with combo).
  */
-export function computeEnemyDamage(state) {
+export function computeEnemyDamage(state: Pick<GameState, 'player'>): number {
   const base = GAME_CONFIG.battle.baseDamageToEnemy;
   const { combo } = state.player;
   const [t1, t2] = GAME_CONFIG.battle.comboThresholds;

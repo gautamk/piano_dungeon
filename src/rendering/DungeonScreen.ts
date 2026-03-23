@@ -1,10 +1,12 @@
+import type { GameState, Room, RoomHitRegion } from '../types.js';
 import { COLORS, GAME_CONFIG } from '../config.js';
 import { ROOM_TYPE } from '../game/DungeonGenerator.js';
+import type { Renderer } from './Renderer.js';
 
 const W = GAME_CONFIG.canvas.width;
 const H = GAME_CONFIG.canvas.height;
 
-const ROOM_ICONS = {
+const ROOM_ICONS: Record<string, string> = {
   [ROOM_TYPE.COMBAT]: '⚔',
   [ROOM_TYPE.ELITE]: '☆',
   [ROOM_TYPE.SHOP]: '$',
@@ -13,7 +15,7 @@ const ROOM_ICONS = {
   [ROOM_TYPE.PRACTICE]: '♪',
 };
 
-const ROOM_LABELS = {
+const ROOM_LABELS: Record<string, string> = {
   [ROOM_TYPE.COMBAT]: 'Combat',
   [ROOM_TYPE.ELITE]: 'Elite',
   [ROOM_TYPE.SHOP]: 'Shop',
@@ -25,9 +27,8 @@ const ROOM_LABELS = {
 /**
  * Renders the dungeon map screen.
  * Rooms are laid out horizontally. Player clicks a reachable, uncleared room to enter.
- * Returns an array of room hit regions for click detection.
  */
-export function renderDungeonScreen(renderer, state) {
+export function renderDungeonScreen(renderer: Renderer, state: GameState): void {
   const { dungeon, player } = state;
   const { rooms } = dungeon;
 
@@ -41,7 +42,7 @@ export function renderDungeonScreen(renderer, state) {
   renderer.centeredText('Choose your next room', 72, { size: 14, color: COLORS.textDim });
 
   // ── Player stats row
-  renderStatsRow(renderer, player);
+  renderStatsRow(renderer, state);
 
   // ── Rooms
   renderRooms(renderer, rooms);
@@ -50,15 +51,15 @@ export function renderDungeonScreen(renderer, state) {
   renderer.centeredText('Click a room to enter', H - 30, { size: 13, color: COLORS.textDim });
 }
 
-function renderStatsRow(renderer, player) {
+function renderStatsRow(renderer: Renderer, state: GameState): void {
   const y = 108;
   const cx = W / 2;
-  renderer.hpHearts(player, cx, y);
-  renderer.text(`Score: ${player.score}`, cx + 160, y, { size: 15, color: COLORS.accent, align: 'center' });
+  renderer.hpHearts(state.player, cx, y);
+  renderer.text(`Score: ${state.player.score}`, cx + 160, y, { size: 15, color: COLORS.accent, align: 'center' });
 }
 
 /** Shared room layout geometry — used by both rendering and hit testing. */
-function roomLayout(rooms) {
+function roomLayout(rooms: Room[]): { roomW: number; roomH: number; gap: number; startX: number; centerY: number } {
   const roomW = 90, roomH = 90, gap = 30;
   const totalW = rooms.length * (roomW + gap) - gap;
   const startX = Math.max(40, (W - totalW) / 2);
@@ -66,7 +67,7 @@ function roomLayout(rooms) {
   return { roomW, roomH, gap, startX, centerY };
 }
 
-function renderRooms(renderer, rooms) {
+function renderRooms(renderer: Renderer, rooms: Room[]): void {
   if (!rooms.length) return;
 
   const { roomW, roomH, gap, startX, centerY } = roomLayout(rooms);
@@ -87,7 +88,7 @@ function renderRooms(renderer, rooms) {
   }
 }
 
-function renderRoom(renderer, room, x, y, w, h) {
+function renderRoom(renderer: Renderer, room: Room, x: number, y: number, w: number, h: number): void {
   const { type, cleared, reachable } = room;
 
   let bgColor = COLORS.rooms[type] ?? COLORS.surface;
@@ -133,7 +134,7 @@ function renderRoom(renderer, room, x, y, w, h) {
 }
 
 /** Returns the hit region for each room (for click detection). */
-export function getRoomHitRegions(rooms) {
+export function getRoomHitRegions(rooms: Room[]): RoomHitRegion[] {
   const { roomW, roomH, gap, startX, centerY } = roomLayout(rooms);
   return rooms.map((room, i) => ({
     room,
@@ -146,7 +147,7 @@ export function getRoomHitRegions(rooms) {
 }
 
 // Exported for testing. The final branch covers floors 9+ (including any future expansion).
-export function floorTheme(floor) {
+export function floorTheme(floor: number): string {
   if (floor <= 2) return 'The Cellar';
   if (floor <= 4) return 'The Catacombs';
   if (floor <= 6) return 'The Tower';

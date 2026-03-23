@@ -1,10 +1,12 @@
+import type { GameState, HitRegion, PracticeHitRegion, Song, PlayerState } from '../types.js';
 import { COLORS, GAME_CONFIG } from '../config.js';
+import type { Renderer } from './Renderer.js';
 
 const W = GAME_CONFIG.canvas.width;
 const H = GAME_CONFIG.canvas.height;
 
 /** Room cleared screen with score breakdown. */
-export function renderRoomClearScreen(renderer, state) {
+export function renderRoomClearScreen(renderer: Renderer, state: GameState): void {
   renderer.rect(0, 0, W, H, 'rgba(10,10,15,0.85)');
 
   renderer.centeredText('ROOM CLEARED', H / 2 - 60, {
@@ -28,7 +30,7 @@ export function renderRoomClearScreen(renderer, state) {
 }
 
 /** Floor complete screen. */
-export function renderFloorClearScreen(renderer, state) {
+export function renderFloorClearScreen(renderer: Renderer, state: GameState): void {
   renderer.rect(0, 0, W, H, COLORS.bg);
 
   renderer.centeredText(`FLOOR ${state.player.floor} COMPLETE`, H / 2 - 80, {
@@ -54,7 +56,7 @@ export function renderFloorClearScreen(renderer, state) {
 }
 
 /** Shop screen. */
-export function renderShopScreen(renderer, state) {
+export function renderShopScreen(renderer: Renderer, state: GameState): void {
   renderer.rect(0, 0, W, H, COLORS.bg);
 
   renderer.centeredText('SHOP', H / 2 - 140, { size: 36, color: COLORS.accent, weight: 'bold' });
@@ -83,7 +85,7 @@ export function renderShopScreen(renderer, state) {
 }
 
 /** Game over screen. */
-export function renderGameOverScreen(renderer, state) {
+export function renderGameOverScreen(renderer: Renderer, state: GameState): void {
   renderer.rect(0, 0, W, H, COLORS.bg);
 
   renderer.centeredText('YOU DIED', H / 2 - 100, {
@@ -111,7 +113,7 @@ export function renderGameOverScreen(renderer, state) {
 }
 
 /** Victory screen. */
-export function renderVictoryScreen(renderer, state) {
+export function renderVictoryScreen(renderer: Renderer, state: GameState): void {
   renderer.rect(0, 0, W, H, COLORS.bg);
 
   renderer.centeredText('VICTORY!', H / 2 - 120, {
@@ -138,7 +140,7 @@ export function renderVictoryScreen(renderer, state) {
 }
 
 /** Practice room — song selection screen. */
-export function renderPracticeScreen(renderer, state) {
+export function renderPracticeScreen(renderer: Renderer, state: GameState): void {
   const songs = state.practice?.songs ?? [];
   renderer.rect(0, 0, W, H, COLORS.bg);
 
@@ -150,7 +152,7 @@ export function renderPracticeScreen(renderer, state) {
   } else {
     const startY = 140;
     const rowH = 76;
-    songs.forEach((song, i) => {
+    songs.forEach((song: Song, i: number) => {
       const y = startY + i * rowH;
       const rx = W / 2 - 300;
       renderer.rect(rx, y, 600, rowH - 10, COLORS.surface, 8);
@@ -169,7 +171,7 @@ export function renderPracticeScreen(renderer, state) {
 }
 
 /** Hit regions for song selection buttons in the PRACTICE screen. */
-export function getPracticeHitRegions(songs) {
+export function getPracticeHitRegions(songs: Song[]): PracticeHitRegion[] {
   const startY = 140;
   const rowH = 76;
   return songs.map((song, i) => ({
@@ -181,12 +183,12 @@ export function getPracticeHitRegions(songs) {
   }));
 }
 
-function renderHpRow(renderer, player, y) {
+function renderHpRow(renderer: Renderer, player: PlayerState, y: number): void {
   renderer.hpHearts(player, W / 2, y, 22);
 }
 
 /** Hit regions for shop buttons. */
-export function getShopHitRegions() {
+export function getShopHitRegions(): { buyHp: HitRegion; leave: HitRegion } {
   const cx = W / 2;
   return {
     buyHp: { x: cx - 140, y: H / 2, w: 280, h: 52 },
@@ -195,11 +197,11 @@ export function getShopHitRegions() {
 }
 
 /** Hit regions for game over / victory restart button. */
-export function getRestartButtonRegion() {
+export function getRestartButtonRegion(): HitRegion {
   return { x: W / 2 - 110, y: H / 2 + 130, w: 220, h: 50 };
 }
 
 /** Hit region for floor clear continue button. */
-export function getFloorClearButtonRegion() {
+export function getFloorClearButtonRegion(): HitRegion {
   return { x: W / 2 - 110, y: H / 2 + 140, w: 220, h: 46 };
 }

@@ -1,4 +1,5 @@
 import { PitchDetector as PitchyDetector } from 'pitchy';
+import type { PitchResult } from '../types.js';
 import { GAME_CONFIG } from '../config.js';
 
 /**
@@ -10,7 +11,16 @@ import { GAME_CONFIG } from '../config.js';
  * or { frequency: null, confidence: 0, stable: false } when no clear pitch.
  */
 export class PitchDetector {
-  constructor(analyserNode, sampleRate) {
+  private analyser: AnalyserNode;
+  private sampleRate: number;
+  private buf: Float32Array<ArrayBuffer>;
+  private _detector: PitchyDetector<Float32Array>;
+  private stableFrames: number;
+  private lastMidi: number | null;
+  private requiredFrames: number;
+  private result: PitchResult;
+
+  constructor(analyserNode: AnalyserNode, sampleRate: number) {
     this.analyser = analyserNode;
     this.sampleRate = sampleRate;
     this.buf = new Float32Array(analyserNode.fftSize);
@@ -25,7 +35,7 @@ export class PitchDetector {
   }
 
   /** Call once per animation frame. Returns stable detected note info. */
-  detect() {
+  detect(): PitchResult {
     this.analyser.getFloatTimeDomainData(this.buf);
 
     const [frequency, clarity] = this._detector.findPitch(this.buf, this.sampleRate);

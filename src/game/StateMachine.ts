@@ -1,5 +1,10 @@
-import { GAME_CONFIG } from '../config.js';
-import { createGameState, damagePlayer, healPlayer, scoreHit, spawnFeedback, tickFeedback } from './GameState.js';
+import type {
+  GameState, Screen, Enemy, Challenge, VirtualNote, EvaluationResult,
+} from '../types.js';
+import { GAME_CONFIG, COLORS } from '../config.js';
+import {
+  createGameState, damagePlayer, healPlayer, scoreHit, spawnFeedback, tickFeedback,
+} from './GameState.js';
 import { generateFloor, unlockNextRoom, ROOM_TYPE } from './DungeonGenerator.js';
 import {
   generateChallenge,
@@ -11,26 +16,35 @@ import {
 } from './ChallengeEngine.js';
 import { NOTE_NAMES } from '../data/music.js';
 import { SONGS, SONGS_LIST } from '../data/songs.js';
-import { COLORS } from '../config.js';
+import type { AudioEngine } from '../audio/AudioEngine.js';
+import type { AudioSynth } from '../audio/AudioSynth.js';
 
 const RESULT_SHOW_MS = 900;
 
 export class StateMachine {
-  constructor(audioEngine, audioSynth) {
+  audio: AudioEngine;
+  synth: AudioSynth | null;
+  state: GameState;
+
+  // FIFO queue of virtual notes (set by triggerVirtualNote, drained one-per-tick)
+  // Using a queue instead of a single slot prevents fast keypresses from overwriting
+  // each other before _tickBattle can consume them.
+  _virtualNoteQueue: VirtualNote[];
+
+  // After a virtual note is consumed, suppress mic evaluation for this many ms.
+  // Prevents speaker bleed / harmonics from auto-advancing multi-note challenges.
+  _micEvalCooldownMs: number;
+
+  // Prevent double-triggering the same MIDI within one challenge phase
+  _lastActedMidi: number | null;
+
+  constructor(audioEngine: AudioEngine, audioSynth: AudioSynth | null) {
     this.audio = audioEngine;
     this.synth = audioSynth ?? null;
     this.state = createGameState();
 
-    // FIFO queue of virtual notes (set by triggerVirtualNote, drained one-per-tick)
-    // Using a queue instead of a single slot prevents fast keypresses from overwriting
-    // each other before _tickBattle can consume them.
     this._virtualNoteQueue = [];
-
-    // After a virtual note is consumed, suppress mic evaluation for this many ms.
-    // Prevents speaker bleed / harmonics from auto-advancing multi-note challenges.
     this._micEvalCooldownMs = 0;
-
-    // Prevent double-triggering the same MIDI within one challenge phase
     this._lastActedMidi = null;
   }
 
@@ -40,10 +54,10 @@ export class StateMachine {
    * Called when the player clicks a virtual piano key or presses a keyboard shortcut.
    * The note is consumed on the next tick() call.
    */
-  triggerVirtualNote(semitone, octave) {
+  triggerVirtualNote(semitone: number, octave: number): void {
     const name = NOTE_NAMES[semitone];
     const midi = (octave + 1) * 12 + semitone;
-    const vNote = { semitone, octave, name, midi, frequency: null, cents: 0, virtual: true };
+    const vNote: VirtualNote = { semitone, octave, name, midi, frequency: null, cents: 0, virtual: true };
     // Cap queue at 4 to avoid unbounded growth from button-mashing
     if (this._virtualNoteQueue.length < 4) this._virtualNoteQueue.push(vNote);
     // Update display note immediately so the piano strip lights up
@@ -54,7 +68,7 @@ export class StateMachine {
 
   // ─── Public API ────────────────────────────────────────────────────────────
 
-  tick(deltaMs) {
+  tick(deltaMs: number): void {
     // Sync audio state
     this.state.audio.note = this.audio.currentNote;
     this.state.audio.rawFreq = this.audio.rawFrequency;
@@ -64,14 +78,14 @@ export class StateMachine {
     this._tickScreen(deltaMs);
   }
 
-  go(screen) {
+  go(screen: Screen): void {
     this.state.screen = screen;
     this._onEnter(screen);
   }
 
   // ─── Screen Enter ───────────────────────────────────────────────────────────
 
-  _onEnter(screen) {
+  private _onEnter(screen: Screen): void {
     const s = this.state;
     if (screen === 'DUNGEON_MAP') {
       if (s.dungeon.rooms.length === 0) {
@@ -92,13 +106,13 @@ export class StateMachine {
 
   // ─── Per-Screen Tick ────────────────────────────────────────────────────────
 
-  _tickScreen(deltaMs) {
+  private _tickScreen(deltaMs: number): void {
     if (this.state.screen === 'BATTLE') this._tickBattle(deltaMs);
   }
 
   // ─── Battle Logic ───────────────────────────────────────────────────────────
 
-  _startBattle() {
+  private _startBattle(): void {
     const s = this.state;
     const room = s.dungeon.rooms[s.dungeon.currentIndex];
     if (!room?.enemy) return;
@@ -113,12 +127,13 @@ export class StateMachine {
     this._newChallenge();
   }
 
-  _newChallenge() {
+  private _newChallenge(): void {
     const s = this.state;
+    if (!s.battle.enemy) return;
     const type = pickChallengeType(s.battle.enemy, s.player.floor);
 
     if (type === CHALLENGE_TYPE.MELODY) {
-      const song = SONGS[s.battle.enemy.song];
+      const song = s.battle.enemy.song ? SONGS[s.battle.enemy.song] : undefined;
       if (song) {
         const phrase = s.battle.melodyChallengePhrase;
         s.battle.melodyChallengePhrase = (phrase + 1) % song.phrases.length;
@@ -139,14 +154,14 @@ export class StateMachine {
     // guard regardless.
   }
 
-  _tickBattle(deltaMs) {
+  private _tickBattle(deltaMs: number): void {
     const s = this.state;
     const { battle } = s;
 
     if (battle.phase === 'RESULT') {
       battle.resultTimer -= deltaMs;
       if (battle.resultTimer <= 0) {
-        if (battle.lastResult === 'SUCCESS' && battle.enemy.currentHp <= 0) {
+        if (battle.lastResult === 'SUCCESS' && battle.enemy && battle.enemy.currentHp <= 0) {
           this._clearRoom();
         } else if (s.player.hp <= 0) {
           this.go('GAME_OVER');
@@ -171,7 +186,7 @@ export class StateMachine {
     const vNote = this._virtualNoteQueue.shift() ?? null;
     const isVirtual = !!vNote;
 
-    // Clear the display once the queue is fully drained (Bug 2 fix)
+    // Clear the display once the queue is fully drained
     if (!isVirtual && this._virtualNoteQueue.length === 0) {
       this.state.audio.virtualNote = null;
     }
@@ -181,7 +196,7 @@ export class StateMachine {
     if (note && (isVirtual || note.midi !== this._lastActedMidi)) {
       this._lastActedMidi = note.midi;
       if (isVirtual) {
-        // Start cooldown so mic input can't race the next sequence position (Bug 1 fix)
+        // Start cooldown so mic input can't race the next sequence position
         this._micEvalCooldownMs = 300;
       }
       this._evaluateChallengeNote(note);
@@ -191,7 +206,7 @@ export class StateMachine {
     if (battle.timerMs <= 0) this._onChallengeTimeout();
   }
 
-  _evaluateChallengeNote(note) {
+  private _evaluateChallengeNote(note: { semitone: number; midi?: number }): void {
     const s = this.state;
     const { battle } = s;
     const result = evaluateNote(battle.challenge, note);
@@ -200,11 +215,12 @@ export class StateMachine {
     const cx = 640, cy = 320;
 
     if (result === 'PROGRESS') {
-      spawnFeedback(s, `✓ ${note.name}`, cx, cy - 80, COLORS.success);
+      spawnFeedback(s, `✓ ${(note as { name?: string }).name ?? ''}`, cx, cy - 80, COLORS.success);
       return;
     }
 
     if (result === 'SUCCESS') {
+      if (!battle.enemy) return;
       const dmg = computeEnemyDamage(s);
       battle.enemy.currentHp = Math.max(0, battle.enemy.currentHp - dmg);
       scoreHit(s, dmg);
@@ -216,7 +232,7 @@ export class StateMachine {
     }
 
     if (result === 'NEAR_MISS') {
-      if (battle.enemy.isPractice) {
+      if (battle.enemy?.isPractice) {
         spawnFeedback(s, 'Close! Try again.', cx, cy - 60, COLORS.warning);
         return; // no damage in practice
       }
@@ -228,12 +244,13 @@ export class StateMachine {
     }
 
     if (result === 'FAIL') {
-      if (battle.enemy.isPractice) {
+      if (battle.enemy?.isPractice) {
         // Reset timer and let them try again — evaluateNote already reset challenge.progress
-        battle.timerMs = battle.challenge.timeMs;
+        battle.timerMs = battle.challenge?.timeMs ?? 10000;
         spawnFeedback(s, 'Wrong note — try again!', cx, cy - 60, COLORS.warning);
         return; // stay in WAITING phase, no HP loss
       }
+      if (!battle.enemy) return;
       const dmg = battle.enemy.attackPower;
       damagePlayer(s, dmg);
       battle.consecutiveWrong++;
@@ -243,13 +260,13 @@ export class StateMachine {
   }
 
   /** Set battle into RESULT phase with the given outcome. */
-  _endChallenge(battle, result) {
+  private _endChallenge(battle: GameState['battle'], result: EvaluationResult): void {
     battle.lastResult = result;
     battle.phase = 'RESULT';
     battle.resultTimer = RESULT_SHOW_MS;
   }
 
-  _onChallengeTimeout() {
+  private _onChallengeTimeout(): void {
     const s = this.state;
     if (s.battle.enemy?.isPractice) {
       // Reset challenge and try again — no HP damage
@@ -258,13 +275,14 @@ export class StateMachine {
       spawnFeedback(s, "Time's up — try again!", 640, 300, COLORS.warning);
       return;
     }
+    if (!s.battle.enemy) return;
     const dmg = s.battle.enemy.attackPower;
     damagePlayer(s, dmg);
     spawnFeedback(s, `TIME! -${dmg} HP`, 640, 300, COLORS.danger);
     this._endChallenge(s.battle, 'FAIL');
   }
 
-  _clearRoom() {
+  private _clearRoom(): void {
     const s = this.state;
     const room = s.dungeon.rooms[s.dungeon.currentIndex];
     room.cleared = true;
@@ -283,7 +301,7 @@ export class StateMachine {
 
   // ─── Action Handlers ────────────────────────────────────────────────────────
 
-  onStartGame() {
+  onStartGame(): void {
     this.state.micDevices = this.audio.devices;
     this.state.audio.inputMode = this.audio.inputMode;
     this.state.dungeon.rooms = generateFloor(1, this.state.dungeon.runSeed);
@@ -291,7 +309,7 @@ export class StateMachine {
     this.go('DUNGEON_MAP');
   }
 
-  onEnterRoom(roomIndex) {
+  onEnterRoom(roomIndex: number): void {
     const room = this.state.dungeon.rooms[roomIndex];
     if (!room || room.cleared || !room.reachable) return;
     this.state.dungeon.currentIndex = roomIndex;
@@ -323,7 +341,7 @@ export class StateMachine {
    * Called when the player selects a song in the PRACTICE screen.
    * Creates a synthetic practice "enemy" and starts a BATTLE for that song.
    */
-  onSelectPracticeSong(songId) {
+  onSelectPracticeSong(songId: string): void {
     const song = SONGS[songId];
     if (!song) return;
 
@@ -346,22 +364,25 @@ export class StateMachine {
     this.go('BATTLE');
   }
 
-  onContinueAfterRoomClear() {
+  onContinueAfterRoomClear(): void {
     this.state.battle.isPractice = false;
     this.go('DUNGEON_MAP');
   }
-  onLeavePractice() {
+
+  onLeavePractice(): void {
     this.state.battle.isPractice = false;
     this.go('DUNGEON_MAP');
   }
-  onNextFloor() {
+
+  onNextFloor(): void {
     const s = this.state;
     s.player.floor++;
     s.dungeon.rooms = generateFloor(s.player.floor, s.dungeon.runSeed);
     s.dungeon.currentIndex = -1;
     this.go('DUNGEON_MAP');
   }
-  onBuyHp() {
+
+  onBuyHp(): void {
     const s = this.state;
     const cost = 50;
     if (s.player.score >= cost && s.player.hp < s.player.maxHp) {
@@ -370,6 +391,8 @@ export class StateMachine {
       spawnFeedback(s, '+2 HP', 640, 360, COLORS.success);
     }
   }
-  onLeaveShop() { this.go('DUNGEON_MAP'); }
-  onRestartGame() { this.go('TITLE'); }
+
+  onLeaveShop(): void { this.go('DUNGEON_MAP'); }
+
+  onRestartGame(): void { this.go('TITLE'); }
 }

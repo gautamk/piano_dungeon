@@ -1,4 +1,5 @@
 import * as ex from 'excalibur';
+import type { GameState } from './types.js';
 import { AudioEngine } from './audio/AudioEngine.js';
 import { AudioSynth } from './audio/AudioSynth.js';
 import { StateMachine } from './game/StateMachine.js';
@@ -75,16 +76,17 @@ const KEY_NOTE_MAP = {
 
 const canvas = engine.canvas;
 
-function toLogicalCoords(e) {
+function toLogicalCoords(e: MouseEvent): { x: number; y: number } {
   const rect = canvas.getBoundingClientRect();
   const scaleX = 1280 / rect.width;
   const scaleY = 720 / rect.height;
-  const clientX = e.touches ? e.touches[0].clientX : e.clientX;
-  const clientY = e.touches ? e.touches[0].clientY : e.clientY;
+  const anyE = e as MouseEvent & { touches?: { clientX: number; clientY: number }[] };
+  const clientX = anyE.touches ? anyE.touches[0].clientX : anyE.clientX;
+  const clientY = anyE.touches ? anyE.touches[0].clientY : anyE.clientY;
   return { x: (clientX - rect.left) * scaleX, y: (clientY - rect.top) * scaleY };
 }
 
-function hitTest(pos, region) {
+function hitTest(pos: { x: number; y: number }, region: { x: number; y: number; w: number; h: number }): boolean {
   return pos.x >= region.x && pos.x <= region.x + region.w
       && pos.y >= region.y && pos.y <= region.y + region.h;
 }
@@ -175,7 +177,7 @@ canvas.addEventListener('click', async (e) => {
 
 // ─── Keyboard input ───────────────────────────────────────────────────────────
 
-const heldKeys = new Set(); // prevent key repeat for piano keys
+const heldKeys = new Set<string>(); // prevent key repeat for piano keys
 
 document.addEventListener('keydown', async (e) => {
   const screen = sm.state.screen;
@@ -193,7 +195,7 @@ document.addEventListener('keydown', async (e) => {
   // Piano keyboard shortcuts (during battle or practice play, ignore held keys)
   if (screen === 'BATTLE' && !e.repeat) {
     const key = e.key.toLowerCase();
-    const note = KEY_NOTE_MAP[key];
+    const note = (KEY_NOTE_MAP as Record<string, { semitone: number; octave: number } | undefined>)[key];
     if (note && !heldKeys.has(key)) {
       heldKeys.add(key);
       sm.triggerVirtualNote(note.semitone, note.octave);
@@ -207,7 +209,7 @@ document.addEventListener('keyup', (e) => {
 
 // ─── Render ───────────────────────────────────────────────────────────────────
 
-function render(state) {
+function render(state: GameState): void {
   switch (state.screen) {
     case 'TITLE':      renderTitleScreen(renderer, state); break;
     case 'DUNGEON_MAP':
@@ -250,7 +252,7 @@ class LegacyActor extends ex.Actor {
     this.graphics.use(legacyCanvas);
   }
 
-  onPreUpdate(_engine, deltaMs) {
+  onPreUpdate(_engine: ex.Engine, deltaMs: number): void {
     audio.tick();
     sm.tick(deltaMs);
   }
@@ -268,4 +270,5 @@ engine.goToScene('legacy');
 engine.start();
 
 // Debug hook — exposes game internals for preview/testing
+declare global { interface Window { __game: { sm: StateMachine; audio: AudioEngine; synth: AudioSynth; engine: ex.Engine; startGame: () => void } } }
 window.__game = { sm, audio, synth, engine, startGame: () => sm.onStartGame() };

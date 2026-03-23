@@ -3,20 +3,20 @@
 ## Files
 | File | Role |
 |---|---|
-| `Renderer.js` | Canvas wrapper: DPI scaling, utility draw methods |
-| `BattleScreen.js` | Battle layout: enemy panel, player panel, challenge area, piano strip |
-| `DungeonScreen.js` | Dungeon map: room tiles, floor theme, click hit regions |
-| `PianoRenderer.js` | Piano keyboard strip: layout, hit regions, key highlighting |
-| `TitleScreen.js` | Title + mic setup screen |
-| `OverlayScreens.js` | Room clear, floor clear, shop, game over, victory overlays |
+| `Renderer.ts` | Canvas wrapper: DPI scaling, utility draw methods |
+| `BattleScreen.ts` | Battle layout: enemy panel, player panel, challenge area, piano strip |
+| `DungeonScreen.ts` | Dungeon map: room tiles, floor theme, click hit regions |
+| `PianoRenderer.ts` | Piano keyboard strip: layout, hit regions, key highlighting |
+| `TitleScreen.ts` | Title + mic setup screen |
+| `OverlayScreens.ts` | Room clear, floor clear, shop, game over, victory overlays |
 
 ---
 
 ## Core contract
 
-**All render functions are pure:** `(renderer, state) => void`
+**All render functions are pure:** `(renderer: Renderer, state: GameState) => void`
 - Read from `state`, draw to canvas — nothing else
-- No imports of `GameState.js`
+- No imports of `GameState.ts`
 - No writes to state
 - No calls to `sm.go()` or any StateMachine methods
 - No `setTimeout`, `setInterval`, or `requestAnimationFrame`
@@ -55,17 +55,19 @@
 Enemy panel:     x:40    y:40    w:320  h:200
 Player panel:    x:960   y:40    w:220  h:120
 Challenge area:  cx:640  y:260   w:600  h:280  (centred)
+Melody roll:     x:60    y:544   w:1160 h:48   (MELODY challenges only)
 Piano strip:     x:60    y:600   w:1160 h:90
 Floor label:     cx:640  y:18
 ```
 
-**Piano strip coordinates** must match the constants in `main.js` (`PIANO_X`, `PIANO_Y`, `PIANO_W`, `PIANO_H`) — both files define them independently. If you change the piano position, update both.
+**Piano strip coordinates** must match `PIANO_LAYOUT` in `config.ts` — single source of truth imported by both `BattleScreen.ts` and `main.ts`.
 
 ### Challenge type badge colours
-```js
-{ NOTE: '#6366f1', INTERVAL: '#8b5cf6', SCALE: '#0ea5e9', CHORD: '#f59e0b' }
+Defined in `CHALLENGE_TYPE_COLORS` in `config.ts`:
+```ts
+{ NOTE: '#6366f1', INTERVAL: '#8b5cf6', SCALE: '#0ea5e9', CHORD: '#f59e0b', MELODY: '#10b981' }
 ```
-Add a new entry here when adding a new challenge type.
+Add a new entry there when adding a new challenge type.
 
 ### Sequence progress dots
 `renderSequenceProgress` draws one dot per `challenge.sequence` entry. CHORD challenges use `challenge.played` to determine completion; others use `challenge.progress`.
@@ -77,15 +79,15 @@ Add a new entry here when adding a new challenge type.
 ### `renderDungeonScreen(renderer, state)`
 Draws the room row, floor title, HP hearts, and score.
 
-### `getRoomHitRegions(rooms)` → `Region[]`
+### `getRoomHitRegions(rooms)` → `RoomHitRegion[]`
 Returns click targets for each room tile. Each region includes the room reference:
-```js
-{ x, y, w, h, room, index }
+```ts
+{ x, y, w, h, room: Room, index: number }
 ```
-`main.js` iterates these to handle room entry clicks.
+`main.ts` iterates these to handle room entry clicks.
 
-### Floor themes (`floorTheme(floor)`)
-Returns `{ name, accentColor }` for the current floor. Add new entries here for floors 6–10 as content expands.
+### Floor themes (`floorTheme(floor)`) → `string`
+Returns the theme name string for the current floor. Add new entries here for additional floors.
 
 **Room tile layout:** Rooms are arranged in a single horizontal row centred on the canvas. Gap between tiles is fixed. Do not reflow to multiple rows without also updating `getRoomHitRegions`.
 
@@ -95,8 +97,8 @@ Returns `{ name, accentColor }` for the current floor. Add new entries here for 
 
 ### `getPianoKeyRegions(x, y, width, height)` → `KeyRegion[]`
 Returns hit regions for all keys (black keys first — they sit on top visually and must be tested first):
-```js
-{ semitone, octave, isBlack, x, y, w, h }
+```ts
+{ semitone: number, octave: number, isBlack: boolean, x: number, y: number, w: number, h: number }
 ```
 
 ### `renderPianoStrip(renderer, { audioNote, virtualNote, challenge, x, y, width, height, inputMode })`
@@ -105,9 +107,9 @@ Key highlight priority:
 2. Challenge target(s) — amber/gold
 3. Default — white or black
 
-`audioNote` takes visual priority over `virtualNote` when both are present (mic player sees their real input). For note evaluation, `_virtualNote` takes priority in `StateMachine._tickBattle()`.
+`audioNote` takes visual priority over `virtualNote` when both are present (mic player sees their real input). For note evaluation, virtual notes take priority in `StateMachine._tickBattle()`.
 
-**Octave range:** `PIANO_START_OCTAVE = 3`, `PIANO_NUM_OCTAVES = 2` → C3–B4. Expanding the range requires updating both layout calculations and `KEY_NOTE_MAP` in `main.js`.
+**Octave range:** `PIANO_START_OCTAVE = 3`, `PIANO_NUM_OCTAVES = 2` → C3–B4. Expanding the range requires updating both layout calculations and `KEY_NOTE_MAP` in `main.ts`.
 
 ---
 
@@ -116,10 +118,10 @@ Key highlight priority:
 ### `renderTitleScreen(renderer, state)`
 Draws logo, feature list, mic status, and Start button.
 
-### `getStartButtonRegion()` → `{ x, y, w, h }`
-Returns the hit region for the Start button. Used in `main.js` for click handling.
+### `getStartButtonRegion()` → `HitRegion`
+Returns the hit region for the Start button. Used in `main.ts` for click handling.
 
-**Mic status line:** Shows `state.micError` if set (red), or "Virtual piano (no mic)" if `inputMode === 'none'`.
+**Mic status line:** Shows `state.micError` if set (warning), or "Virtual piano (no mic)" if `inputMode === 'none'`.
 
 ---
 
@@ -134,16 +136,18 @@ Full-screen overlays drawn on top of the previous screen or standalone.
 | `renderShopScreen` | SHOP | Standalone |
 | `renderGameOverScreen` | GAME_OVER | Standalone |
 | `renderVictoryScreen` | VICTORY | Standalone |
+| `renderPracticeScreen` | PRACTICE | Song selection list |
 
 ### Hit regions
 | Function | Returns |
 |---|---|
-| `getShopHitRegions()` | `{ buyHp, leave }` regions |
+| `getShopHitRegions()` | `{ buyHp: HitRegion; leave: HitRegion }` |
 | `getRestartButtonRegion()` | Used on GAME_OVER and VICTORY screens |
 | `getFloorClearButtonRegion()` | Used on FLOOR_CLEAR screen |
+| `getPracticeHitRegions(songs)` | `PracticeHitRegion[]` (includes `songId`) |
 
 **Adding a new overlay screen:**
-1. Add `renderXxxScreen(renderer, state)` here
+1. Add `renderXxxScreen(renderer: Renderer, state: GameState)` here
 2. Add `getXxxHitRegion()` if it has interactive buttons
 3. Wire both into `main.ts` render switch and click handler
 4. Add the transition in `StateMachine`

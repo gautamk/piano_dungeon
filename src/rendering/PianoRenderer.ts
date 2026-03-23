@@ -1,5 +1,7 @@
+import type { KeyRegion, Challenge, DetectedNote, VirtualNote, InputMode } from '../types.js';
 import { COLORS, PIANO_LAYOUT } from '../config.js';
 import { NOTE_NAMES } from '../data/music.js';
+import type { Renderer } from './Renderer.js';
 
 const BLACK_KEYS = new Set([1, 3, 6, 8, 10]);
 const WHITE_SEMITONES = [0, 2, 4, 5, 7, 9, 11]; // C D E F G A B
@@ -9,20 +11,20 @@ export const PIANO_START_OCTAVE = PIANO_LAYOUT.startOctave;
 export const PIANO_NUM_OCTAVES = PIANO_LAYOUT.numOctaves;
 
 // Reused Set to avoid per-frame allocation in getHighlightSemitones
-const _highlightSet = new Set();
+const _highlightSet = new Set<number>();
 
 /**
  * Compute piano key layout without drawing.
  * Returns array of { semitone, octave, isBlack, x, y, w, h } for hit testing.
  */
-export function getPianoKeyRegions(x, y, width, height) {
+export function getPianoKeyRegions(x: number, y: number, width: number, height: number): KeyRegion[] {
   const numWhiteKeys = PIANO_NUM_OCTAVES * 7;
   const whiteW = Math.floor(width / numWhiteKeys);
   const blackW = Math.floor(whiteW * 0.6);
   const blackH = Math.floor(height * 0.6);
 
-  const whiteKeys = [];
-  const blackKeys = [];
+  const whiteKeys: KeyRegion[] = [];
+  const blackKeys: KeyRegion[] = [];
 
   let keyX = x;
   for (let oct = PIANO_START_OCTAVE; oct < PIANO_START_OCTAVE + PIANO_NUM_OCTAVES; oct++) {
@@ -50,9 +52,30 @@ export function getPianoKeyRegions(x, y, width, height) {
  * audioNote: real mic detected note (or null)
  * virtualNote: last virtual key pressed (or null)
  * challenge: active challenge for highlighting target keys
- * inputMode: 'mic' | 'virtual' | 'none'
+ * inputMode: 'mic' | 'none'
  */
-export function renderPianoStrip(renderer, { audioNote, virtualNote, challenge, x, y, width, height, inputMode }) {
+export function renderPianoStrip(
+  renderer: Renderer,
+  {
+    audioNote,
+    virtualNote,
+    challenge,
+    x,
+    y,
+    width,
+    height,
+    inputMode,
+  }: {
+    audioNote: DetectedNote | null;
+    virtualNote: VirtualNote | null;
+    challenge: Challenge | null;
+    x: number;
+    y: number;
+    width: number;
+    height: number;
+    inputMode: InputMode;
+  }
+): void {
   const ctx = renderer.ctx;
   const numWhiteKeys = PIANO_NUM_OCTAVES * 7;
   const whiteW = Math.floor(width / numWhiteKeys);
@@ -150,7 +173,7 @@ export function renderPianoStrip(renderer, { audioNote, virtualNote, challenge, 
   ctx.fillText('Click keys  or  use  A-S-D-F-G-H-J  /  W-E-T-Y-U', x + width, statusY);
 }
 
-function getHighlightSemitones(challenge) {
+function getHighlightSemitones(challenge: Challenge | null): Set<number> {
   _highlightSet.clear();
   if (!challenge) return _highlightSet;
   if (challenge.type === 'NOTE') {

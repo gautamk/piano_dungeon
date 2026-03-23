@@ -1,3 +1,5 @@
+import type { Song } from '../types.js';
+
 /**
  * Song library — each song is a collection of melodic phrases.
  *
@@ -15,7 +17,7 @@ const Q = 450; // quarter note ms at ~133 bpm
 const E = 225; // eighth note
 const H = 900; // half note
 
-export const SONGS = {
+export const SONGS: Record<string, Song> = {
   furElise: {
     id: 'furElise',
     title: 'Für Elise',
@@ -167,4 +169,4 @@ export const SONGS = {
 };
 
 /** Flat list of all songs, sorted by difficulty. */
-export const SONGS_LIST = Object.values(SONGS).sort((a, b) => a.difficulty - b.difficulty);
+export const SONGS_LIST: Song[] = Object.values(SONGS).sort((a, b) => a.difficulty - b.difficulty);

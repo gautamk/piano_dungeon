@@ -7,12 +7,15 @@ import { A4_MIDI, A4_FREQ } from '../data/music.js';
  * Must be started inside a user gesture handler (same rule as AudioEngine).
  */
 export class AudioSynth {
+  private _synth: Tone.PolySynth | null;
+  private _started: boolean;
+
   constructor() {
     this._synth = null;
     this._started = false;
   }
 
-  async start() {
+  async start(): Promise<void> {
     if (this._started) return;
     await Tone.start(); // resumes Tone's AudioContext; requires prior user gesture
 
@@ -31,7 +34,7 @@ export class AudioSynth {
    * Play a single note (virtual piano key press).
    * semitone: 0-11, octave: integer
    */
-  playNote(semitone, octave) {
+  playNote(semitone: number, octave: number): void {
     if (!this._synth) return;
     const freq = this._toFreq(semitone, octave);
     try {
@@ -39,7 +42,7 @@ export class AudioSynth {
     } catch { /* silently absorb polyphony overflow */ }
   }
 
-  _toFreq(semitone, octave) {
+  private _toFreq(semitone: number, octave: number): number {
     const midi = (octave + 1) * 12 + semitone;
     return A4_FREQ * Math.pow(2, (midi - A4_MIDI) / 12);
   }

@@ -1,6 +1,8 @@
+import type { GameState, Challenge, Enemy, PlayerState } from '../types.js';
 import { COLORS, GAME_CONFIG, PIANO_LAYOUT, CHALLENGE_TYPE_COLORS } from '../config.js';
 import { NOTE_NAMES } from '../data/music.js';
 import { renderPianoStrip } from './PianoRenderer.js';
+import type { Renderer } from './Renderer.js';
 
 export { PIANO_LAYOUT } from '../config.js';
 
@@ -10,7 +12,7 @@ const H = GAME_CONFIG.canvas.height;
 /**
  * Renders the battle screen: enemy, challenge description, timer, piano strip.
  */
-export function renderBattleScreen(renderer, state) {
+export function renderBattleScreen(renderer: Renderer, state: GameState): void {
   const { battle, player, audio } = state;
   const { enemy, challenge, phase, timerMs, lastResult } = battle;
 
@@ -51,7 +53,7 @@ export function renderBattleScreen(renderer, state) {
   });
 }
 
-function renderEnemyPanel(renderer, enemy, combo) {
+function renderEnemyPanel(renderer: Renderer, enemy: Enemy, combo: number): void {
   const x = 40, y = 40, w = 320, h = 200;
 
   // Panel background
@@ -85,7 +87,7 @@ function renderEnemyPanel(renderer, enemy, combo) {
   });
 }
 
-function renderPlayerPanel(renderer, player) {
+function renderPlayerPanel(renderer: Renderer, player: PlayerState): void {
   const w = 220, h = 120;
   const x = W - w - 40, y = 40;
 
@@ -109,7 +111,13 @@ function renderPlayerPanel(renderer, player) {
   renderer.text(`Score: ${player.score}`, x + 16, y + 78, { size: 13, color: COLORS.accent });
 }
 
-function renderChallengeArea(renderer, challenge, phase, timerMs, lastResult) {
+function renderChallengeArea(
+  renderer: Renderer,
+  challenge: Challenge | null,
+  phase: string,
+  timerMs: number,
+  lastResult: string | null
+): void {
   if (!challenge) return;
 
   const cx = W / 2;
@@ -161,22 +169,25 @@ function renderChallengeArea(renderer, challenge, phase, timerMs, lastResult) {
 
   // Result text
   if (lastResult) {
-    const resultTexts = {
+    const resultTexts: Record<string, [string, string]> = {
       SUCCESS: ['✓ CORRECT!', COLORS.success],
       FAIL: ['✗ WRONG', COLORS.danger],
       NEAR_MISS: ['≈ CLOSE...', COLORS.warning],
     };
-    const [txt, col] = resultTexts[lastResult] || ['', COLORS.text];
-    renderer.text(txt, cx, areaY + 185, { size: 26, color: col, align: 'center', weight: 'bold' });
+    const entry = resultTexts[lastResult];
+    if (entry) {
+      const [txt, col] = entry;
+      renderer.text(txt, cx, areaY + 185, { size: 26, color: col, align: 'center', weight: 'bold' });
+    }
   }
 }
 
 /**
  * Horizontal piano-roll strip showing all notes in a MELODY challenge.
  * Sits in the gap between the challenge area and the piano keyboard strip.
- * Completed notes are dimmed, current target glows amber, upcoming notes are muted.
  */
-function renderMelodyRoll(renderer, challenge) {
+function renderMelodyRoll(renderer: Renderer, challenge: Challenge): void {
+  if (challenge.type !== 'MELODY') return;
   const { sequence, octaves, progress } = challenge;
   if (!sequence || sequence.length === 0) return;
 
@@ -219,7 +230,7 @@ function renderMelodyRoll(renderer, challenge) {
   });
 }
 
-function renderSequenceProgress(renderer, challenge, cx, y) {
+function renderSequenceProgress(renderer: Renderer, challenge: Challenge, cx: number, y: number): void {
   const seq = challenge.sequence;
   const progress = challenge.progress ?? 0;
   const dotR = 10;
@@ -229,7 +240,7 @@ function renderSequenceProgress(renderer, challenge, cx, y) {
 
   for (let i = 0; i < seq.length; i++) {
     const done = challenge.type === 'CHORD'
-      ? challenge.played?.has(seq[i])
+      ? (challenge as { played?: Set<number> }).played?.has(seq[i])
       : i < progress;
     const isCurrent = challenge.type !== 'CHORD' && i === progress;
 
@@ -249,6 +260,6 @@ function renderSequenceProgress(renderer, challenge, cx, y) {
   }
 }
 
-function truncate(str, maxLen) {
+function truncate(str: string, maxLen: number): string {
   return str.length > maxLen ? str.slice(0, maxLen - 1) + '…' : str;
 }

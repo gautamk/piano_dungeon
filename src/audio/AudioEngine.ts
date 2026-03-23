@@ -1,3 +1,4 @@
+import type { DetectedNote, InputMode } from '../types.js';
 import { GAME_CONFIG } from '../config.js';
 import { PitchDetector } from './PitchDetector.js';
 import { midiToNote, freqToCents } from './NoteMapper.js';
@@ -8,6 +9,17 @@ import { midiToNote, freqToCents } from './NoteMapper.js';
  * Must be initialized inside a user gesture handler due to autoplay policy.
  */
 export class AudioEngine {
+  ctx: AudioContext | null;
+  analyser: AnalyserNode | null;
+  source: MediaStreamAudioSourceNode | null;
+  stream: MediaStream | null;
+  detector: PitchDetector | null;
+  selectedDeviceId: string | null;
+  devices: MediaDeviceInfo[];
+  inputMode: InputMode;
+  currentNote: DetectedNote | null;
+  rawFrequency: number | null;
+
   constructor() {
     this.ctx = null;
     this.analyser = null;
@@ -16,13 +28,13 @@ export class AudioEngine {
     this.detector = null;
     this.selectedDeviceId = localStorage.getItem('pianoMicDeviceId') ?? null;
     this.devices = [];
-    this.inputMode = 'none'; // 'mic' | 'none'
+    this.inputMode = 'none';
 
     this.currentNote = null;
     this.rawFrequency = null;
   }
 
-  async loadDevices() {
+  async loadDevices(): Promise<MediaDeviceInfo[]> {
     const all = await navigator.mediaDevices.enumerateDevices();
     this.devices = all.filter(d => d.kind === 'audioinput');
     return this.devices;
@@ -32,14 +44,14 @@ export class AudioEngine {
    * Request mic access. Uses stored device if available, otherwise uses system default.
    * Returns true on success, false if permission denied.
    */
-  async start(deviceId) {
+  async start(deviceId?: string): Promise<boolean> {
     if (deviceId) {
       this.selectedDeviceId = deviceId;
       localStorage.setItem('pianoMicDeviceId', deviceId);
     }
 
     // Build audio constraints - no processing so piano sounds come through clean
-    const audioConstraints = {
+    const audioConstraints: MediaTrackConstraints = {
       echoCancellation: false,
       autoGainControl: false,
       noiseSuppression: false,
@@ -49,9 +61,9 @@ export class AudioEngine {
     }
 
     // Race mic request against a 3s timeout so a stuck permission dialog never blocks the game
-    const withTimeout = (promise) => Promise.race([
+    const withTimeout = (promise: Promise<MediaStream>) => Promise.race([
       promise,
-      new Promise((_, reject) => setTimeout(() => reject(new Error('timeout')), 3000)),
+      new Promise<never>((_, reject) => setTimeout(() => reject(new Error('timeout')), 3000)),
     ]);
 
     try {
@@ -81,12 +93,12 @@ export class AudioEngine {
     return true;
   }
 
-  tick() {
+  tick(): void {
     if (!this.detector) return;
 
     const result = this.detector.detect();
 
-    if (result.stable && result.frequency) {
+    if (result.stable && result.frequency && result.midi !== undefined) {
       // PitchDetector already computed result.midi — reuse it to avoid a second Math.log2 call
       const note = midiToNote(result.midi);
       const cents = freqToCents(result.frequency, result.midi);
@@ -98,7 +110,7 @@ export class AudioEngine {
     }
   }
 
-  stop() {
+  stop(): void {
     this.source?.disconnect();
     this.stream?.getTracks().forEach(t => t.stop());
     this.ctx?.close();
@@ -111,7 +123,7 @@ export class AudioEngine {
     this.inputMode = 'none';
   }
 
-  get isRunning() {
+  get isRunning(): boolean {
     return this.ctx !== null && this.ctx.state === 'running';
   }
 }

@@ -1,8 +1,10 @@
+import type { EnemyArchetype, BossArchetype } from '../types.js';
+
 // Enemy archetypes per floor theme
 // challengeWeights: relative probability of each challenge type
 // Weights: { NOTE, INTERVAL, SCALE, CHORD }
 
-export const ENEMY_ARCHETYPES = [
+export const ENEMY_ARCHETYPES: EnemyArchetype[] = [
   // Floor 1-2: The Cellar
   {
     id: 'tone_deaf_ghost',
@@ -106,7 +108,7 @@ export const ENEMY_ARCHETYPES = [
 ];
 
 // Boss per floor cluster
-export const BOSSES = [
+export const BOSSES: BossArchetype[] = [
   {
     id: 'the_warden',
     name: 'The Warden',
@@ -150,19 +152,19 @@ export const BOSSES = [
   },
 ];
 
-export function getEnemiesForFloor(floor) {
+export function getEnemiesForFloor(floor: number): EnemyArchetype[] {
   return ENEMY_ARCHETYPES.filter(
     e => !e.elite && e.floorRange[0] <= floor && e.floorRange[1] >= floor
   );
 }
 
-export function getEliteEnemiesForFloor(floor) {
+export function getEliteEnemiesForFloor(floor: number): EnemyArchetype[] {
   return ENEMY_ARCHETYPES.filter(
     e => e.elite && e.floorRange[0] <= floor && e.floorRange[1] >= floor
   );
 }
 
-export function getBossForFloor(floor) {
+export function getBossForFloor(floor: number): BossArchetype {
   // Find the boss whose floor threshold is at or before the current floor
   return BOSSES.filter(b => b.floor <= floor).at(-1) ?? BOSSES[0];
 }

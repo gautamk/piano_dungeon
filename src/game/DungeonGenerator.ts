@@ -1,8 +1,9 @@
+import type { Room, RoomType, Enemy, EnemyArchetype, BossArchetype } from '../types.js';
 import { GAME_CONFIG } from '../config.js';
 import { getEnemiesForFloor, getEliteEnemiesForFloor, getBossForFloor } from '../data/enemies.js';
 
 // Seeded PRNG (mulberry32)
-function createRng(seed) {
+function createRng(seed: number): () => number {
   let s = seed >>> 0;
   return function () {
     s += 0x6d2b79f5;
@@ -13,7 +14,7 @@ function createRng(seed) {
   };
 }
 
-function pick(rng, arr) {
+function pick<T>(rng: () => number, arr: T[]): T {
   return arr[Math.floor(rng() * arr.length)];
 }
 
@@ -26,7 +27,7 @@ function pick(rng, arr) {
  *   BOSS     - floor boss, multi-step challenge
  *   PRACTICE - song practice room — choose a song to play through, no HP loss
  */
-export const ROOM_TYPE = {
+export const ROOM_TYPE: Record<RoomType, RoomType> = {
   COMBAT: 'COMBAT',
   ELITE: 'ELITE',
   SHOP: 'SHOP',
@@ -35,7 +36,7 @@ export const ROOM_TYPE = {
   PRACTICE: 'PRACTICE',
 };
 
-export function createRoom(type, index, enemy = null) {
+export function createRoom(type: RoomType, index: number, enemy: Enemy | null = null): Room {
   return {
     type,
     index,
@@ -45,11 +46,11 @@ export function createRoom(type, index, enemy = null) {
   };
 }
 
-function scaleHp(enemy, floor) {
+function scaleHp(enemy: EnemyArchetype | BossArchetype, floor: number): number {
   return Math.round(enemy.maxHp * (1 + (floor - 1) * 0.15));
 }
 
-function scaleAttack(enemy, floor) {
+function scaleAttack(enemy: EnemyArchetype | BossArchetype, floor: number): number {
   return Math.round(enemy.attackPower * (1 + (floor - 1) * 0.1));
 }
 
@@ -57,7 +58,7 @@ function scaleAttack(enemy, floor) {
  * Generate rooms for a floor.
  * Returns an array of room objects. Index 0 = first room, last = boss.
  */
-export function generateFloor(floor, runSeed) {
+export function generateFloor(floor: number, runSeed: number): Room[] {
   const rng = createRng(floor * 31337 + runSeed);
   const enemies = getEnemiesForFloor(floor);
   const elites = getEliteEnemiesForFloor(floor);
@@ -65,11 +66,12 @@ export function generateFloor(floor, runSeed) {
   const { minRooms, maxRooms } = GAME_CONFIG.dungeon;
   const roomCount = minRooms + Math.floor(rng() * (maxRooms - minRooms + 1));
 
-  const rooms = [];
+  const rooms: Room[] = [];
 
   for (let i = 0; i < roomCount; i++) {
     const roll = rng();
-    let type, enemy;
+    let type: RoomType;
+    let enemy: Enemy | null = null;
 
     if (i === 0) {
       // First room is always a plain combat encounter
@@ -104,12 +106,12 @@ export function generateFloor(floor, runSeed) {
       };
     }
 
-    rooms.push(createRoom(type, i, enemy ?? null));
+    rooms.push(createRoom(type, i, enemy));
   }
 
   // Always cap with a boss room
   const bossArch = getBossForFloor(floor);
-  const boss = {
+  const boss: Enemy = {
     ...bossArch,
     currentHp: scaleHp(bossArch, floor),
     maxHp: scaleHp(bossArch, floor),
@@ -124,7 +126,7 @@ export function generateFloor(floor, runSeed) {
 }
 
 /** Unlock the next room after a room is cleared. */
-export function unlockNextRoom(rooms, clearedIndex) {
+export function unlockNextRoom(rooms: Room[], clearedIndex: number): void {
   const next = clearedIndex + 1;
   if (next < rooms.length) {
     rooms[next].reachable = true;

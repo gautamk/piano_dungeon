@@ -1,20 +1,22 @@
 import { describe, it, expect } from 'vitest';
 import { evaluateNote, generateChallenge, generateMelodyChallenge, pickChallengeType, computeEnemyDamage, CHALLENGE_TYPE } from '../game/ChallengeEngine.js';
 import { GAME_CONFIG } from '../config.js';
+import type { Challenge, Enemy, Song } from '../types.js';
+import type { GameState } from '../types.js';
 
 // Helper: create a fake detected note
-function note(semitone, octave = 4) {
+function note(semitone: number, octave = 4) {
   return { semitone, octave, midi: (octave + 1) * 12 + semitone };
 }
 
 describe('evaluateNote — NOTE challenge', () => {
-  function makeNoteChallenge(semitone) {
+  function makeNoteChallenge(semitone: number) {
     return {
       type: CHALLENGE_TYPE.NOTE,
       sequence: [semitone],
       progress: 0,
       targets: [{ semitone, octave: 4 }],
-    };
+    } as unknown as Challenge;
   }
 
   it('returns SUCCESS for correct semitone', () => {
@@ -40,18 +42,18 @@ describe('evaluateNote — NOTE challenge', () => {
 });
 
 describe('evaluateNote — INTERVAL challenge', () => {
-  function makeIntervalChallenge(root, target) {
+  function makeIntervalChallenge(root: number, target: number) {
     return {
       type: CHALLENGE_TYPE.INTERVAL,
       sequence: [root, target],
       progress: 0,
-    };
+    } as unknown as Challenge;
   }
 
   it('returns PROGRESS on first correct note in sequence', () => {
     const c = makeIntervalChallenge(0, 7); // C then G
     expect(evaluateNote(c, note(0))).toBe('PROGRESS');
-    expect(c.progress).toBe(1);
+    expect((c as { progress: number }).progress).toBe(1);
   });
 
   it('returns SUCCESS on completing the sequence', () => {
@@ -64,19 +66,19 @@ describe('evaluateNote — INTERVAL challenge', () => {
     const c = makeIntervalChallenge(0, 7);
     evaluateNote(c, note(0)); // correct first note
     evaluateNote(c, note(3)); // wrong second note
-    expect(c.progress).toBe(0);
+    expect((c as { progress: number }).progress).toBe(0);
   });
 });
 
 describe('evaluateNote — CHORD challenge', () => {
-  function makeChordChallenge(semitones) {
+  function makeChordChallenge(semitones: number[]) {
     return {
       type: CHALLENGE_TYPE.CHORD,
       sequence: semitones,
       required: new Set(semitones),
-      played: new Set(),
+      played: new Set<number>(),
       progress: 0,
-    };
+    } as unknown as Challenge;
   }
 
   it('accumulates PROGRESS as chord tones are played', () => {
@@ -103,23 +105,23 @@ describe('evaluateNote — CHORD challenge', () => {
     // Playing the same tone again should be silently ignored, not penalised
     const result = evaluateNote(c, note(0));
     expect(result).toBeNull();
-    expect(c.played.size).toBe(1); // still only one tone collected
+    expect((c as { played: Set<number> }).played.size).toBe(1); // still only one tone collected
   });
 });
 
 describe('evaluateNote — MELODY challenge', () => {
-  function makeMelodyChallenge(sequence) {
+  function makeMelodyChallenge(sequence: number[]) {
     return {
       type: CHALLENGE_TYPE.MELODY,
       sequence,
       progress: 0,
-    };
+    } as unknown as Challenge;
   }
 
   it('returns PROGRESS on correct note in sequence', () => {
     const c = makeMelodyChallenge([0, 4, 7]); // C, E, G
     expect(evaluateNote(c, note(0))).toBe('PROGRESS');
-    expect(c.progress).toBe(1);
+    expect((c as { progress: number }).progress).toBe(1);
   });
 
   it('returns SUCCESS when the last note in the melody is played', () => {
@@ -133,7 +135,7 @@ describe('evaluateNote — MELODY challenge', () => {
     const c = makeMelodyChallenge([0, 4, 7]);
     evaluateNote(c, note(0)); // C — correct
     expect(evaluateNote(c, note(2))).toBe('FAIL'); // D — wrong
-    expect(c.progress).toBe(0);
+    expect((c as { progress: number }).progress).toBe(0);
   });
 
   it('resets and allows restart after a wrong note', () => {
@@ -141,7 +143,7 @@ describe('evaluateNote — MELODY challenge', () => {
     evaluateNote(c, note(0)); // progress = 1
     evaluateNote(c, note(2)); // FAIL, progress = 0
     evaluateNote(c, note(0)); // restart — should be PROGRESS again
-    expect(c.progress).toBe(1);
+    expect((c as { progress: number }).progress).toBe(1);
   });
 });
 
@@ -169,9 +171,9 @@ describe('generateChallenge', () => {
   it('generates a CHORD challenge with required and played Sets', () => {
     const c = generateChallenge(CHALLENGE_TYPE.CHORD, 6);
     expect(c.type).toBe(CHALLENGE_TYPE.CHORD);
-    expect(c.required).toBeInstanceOf(Set);
-    expect(c.played).toBeInstanceOf(Set);
-    expect(c.played.size).toBe(0);
+    expect((c as { required: Set<number> }).required).toBeInstanceOf(Set);
+    expect((c as { played: Set<number> }).played).toBeInstanceOf(Set);
+    expect((c as { played: Set<number> }).played.size).toBe(0);
   });
 
   it('falls back to NOTE when INTERVAL is not yet available (floor < 3)', () => {
@@ -197,11 +199,11 @@ describe('generateMelodyChallenge', () => {
           { semitone: 7, octave: 4, durationMs: 500 },
         ],
       ],
-    };
+    } as unknown as Song;
     const c = generateMelodyChallenge(mockSong, 0);
     expect(c.type).toBe(CHALLENGE_TYPE.MELODY);
     expect(c.sequence).toEqual([0, 4, 7]);
-    expect(c.octaves).toEqual([4, 4, 4]);
+    expect((c as { octaves: number[] }).octaves).toEqual([4, 4, 4]);
     expect(c.timeMs).toBeGreaterThan(0);
   });
 
@@ -213,7 +215,7 @@ describe('generateMelodyChallenge', () => {
         [{ semitone: 0, octave: 4, durationMs: 400 }],
         [{ semitone: 7, octave: 4, durationMs: 400 }],
       ],
-    };
+    } as unknown as Song;
     const c = generateMelodyChallenge(mockSong, 3); // 3 % 2 = phrase index 1
     expect(c.sequence).toEqual([7]);
   });
@@ -223,15 +225,15 @@ describe('generateMelodyChallenge', () => {
       id: 'short',
       title: 'Short',
       phrases: [[{ semitone: 0, octave: 4, durationMs: 100 }]],
-    };
+    } as unknown as Song;
     const c = generateMelodyChallenge(mockSong, 0);
     expect(c.timeMs).toBe(8000); // 100ms * 2.5 = 250ms < 8000ms floor
   });
 });
 
 describe('pickChallengeType', () => {
-  function makeEnemy(weights) {
-    return { challengeWeights: weights, song: null };
+  function makeEnemy(weights: Record<string, number>) {
+    return { challengeWeights: weights, song: null } as unknown as Enemy;
   }
 
   it('always returns NOTE when all other types have zero weight', () => {
@@ -289,7 +291,7 @@ describe('pickChallengeType', () => {
   });
 
   it('allows MELODY when enemy has a song', () => {
-    const enemy = { challengeWeights: { NOTE: 0, INTERVAL: 0, SCALE: 0, CHORD: 0, MELODY: 10 }, song: 'ode_to_joy' };
+    const enemy = { challengeWeights: { NOTE: 0, INTERVAL: 0, SCALE: 0, CHORD: 0, MELODY: 10 }, song: 'ode_to_joy' } as unknown as Enemy;
     let sawMelody = false;
     for (let i = 0; i < 50; i++) {
       if (pickChallengeType(enemy, 5) === CHALLENGE_TYPE.MELODY) { sawMelody = true; break; }
@@ -308,8 +310,8 @@ describe('computeEnemyDamage', () => {
   const [m1, m2] = GAME_CONFIG.battle.comboMultipliers;  // [1.5, 2.0]
   const base = GAME_CONFIG.battle.baseDamageToEnemy;     // 20
 
-  function makeState(combo) {
-    return { player: { combo } };
+  function makeState(combo: number) {
+    return { player: { combo } } as unknown as Pick<GameState, 'player'>;
   }
 
   it('returns base damage at combo 0', () => {

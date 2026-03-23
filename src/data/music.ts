@@ -1,10 +1,12 @@
-export const NOTE_NAMES = ['C', 'C#', 'D', 'D#', 'E', 'F', 'F#', 'G', 'G#', 'A', 'A#', 'B'];
+import type { NoteReference, Scale, Chord, Interval } from '../types.js';
 
-export const A4_MIDI = 69;
-export const A4_FREQ = 440.0;
+export const NOTE_NAMES: string[] = ['C', 'C#', 'D', 'D#', 'E', 'F', 'F#', 'G', 'G#', 'A', 'A#', 'B'];
+
+export const A4_MIDI: number = 69;
+export const A4_FREQ: number = 440.0;
 
 // Roots used in challenges - comfortable piano range C3-C5
-export const CHALLENGE_ROOTS = [
+export const CHALLENGE_ROOTS: NoteReference[] = [
   { semitone: 0, octave: 4, name: 'C4' },
   { semitone: 2, octave: 4, name: 'D4' },
   { semitone: 4, octave: 4, name: 'E4' },
@@ -16,7 +18,7 @@ export const CHALLENGE_ROOTS = [
   { semitone: 7, octave: 3, name: 'G3' },
 ];
 
-export const SCALES = {
+export const SCALES: Record<string, Scale> = {
   major: {
     name: 'Major',
     intervals: [0, 2, 4, 5, 7, 9, 11, 12],
@@ -43,7 +45,7 @@ export const SCALES = {
   },
 };
 
-export const CHORDS = {
+export const CHORDS: Record<string, Chord> = {
   major: {
     name: 'Major',
     intervals: [0, 4, 7],
@@ -64,7 +66,7 @@ export const CHORDS = {
   },
 };
 
-export const INTERVALS = [
+export const INTERVALS: Interval[] = [
   { name: 'Perfect Unison', semitones: 0, abbr: 'P1' },
   { name: 'Minor 2nd', semitones: 1, abbr: 'm2' },
   { name: 'Major 2nd', semitones: 2, abbr: 'M2' },
@@ -81,7 +83,7 @@ export const INTERVALS = [
 ];
 
 // Which intervals are available by floor
-export function getAvailableIntervals(floor) {
+export function getAvailableIntervals(floor: number): Interval[] {
   if (floor < 3) return [];
   if (floor < 5) return INTERVALS.filter(i => [7, 12].includes(i.semitones)); // P5, P8
   if (floor < 7) return INTERVALS.filter(i => [5, 7, 12].includes(i.semitones)); // + P4

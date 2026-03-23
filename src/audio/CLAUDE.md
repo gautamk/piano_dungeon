@@ -3,12 +3,12 @@
 ## Files
 | File | Role |
 |---|---|
-| `AudioEngine.js` | Mic input: owns the input `AudioContext`, `MediaStream`, and pitch detection pipeline |
-| `AudioSynth.js` | Audio output: Tone.js piano synth for note playback and challenge previews |
-| `PitchDetector.js` | Wraps `pitchy` (McLeod Pitch Method) with note-stability logic |
-| `NoteMapper.js` | Pure functions — Hz ↔ MIDI ↔ note name conversions |
+| `AudioEngine.ts` | Mic input: owns the input `AudioContext`, `MediaStream`, and pitch detection pipeline |
+| `AudioSynth.ts` | Audio output: Tone.js piano synth for note playback and challenge previews |
+| `PitchDetector.ts` | Wraps `pitchy` (McLeod Pitch Method) with note-stability logic |
+| `NoteMapper.ts` | Pure functions — Hz ↔ MIDI ↔ note name conversions |
 
-> **Migration note:** `AudioEngine` and `AudioSynth` lifecycle hooks will move to Excalibur Scene `onActivate`/`onDeactivate` in beads `cpx` and `4md` respectively.
+Pending Excalibur Scene migration: beads `cpx` (AudioEngine lifecycle) and `4md` (AudioSynth lifecycle).
 
 ---
 
@@ -25,7 +25,7 @@
 4. `audio.stop()` — tears down stream and context
 
 **What `tick()` exposes:**
-- `audio.currentNote` — `{ semitone, octave, name, midi, frequency, cents }` or `null` when silent
+- `audio.currentNote` — `DetectedNote | null` when silent
 - `audio.rawFrequency` — raw Hz value before stability gating, or `null`
 
 **Rules:**
@@ -70,14 +70,14 @@ Both route through a shared `Tone.Reverb` (`decay: 1.5s, wet: 0.2`).
 Wraps `pitchy`'s `PitchDetector.forFloat32Array(fftSize)` with a stability buffer.
 
 **`detect()` — called once per animation frame:**
-1. Reads `Float32Array` from the `AnalyserNode`
+1. Reads `Float32Array<ArrayBuffer>` from the `AnalyserNode`
 2. Calls `pitchy` to get `[frequency, clarity]`
 3. Rejects results below `GAME_CONFIG.audio.confidenceThreshold`
 4. Requires `stabilityFrames` consecutive frames on the same MIDI note before returning `stable: true`
 
-**Returns:** `{ frequency, confidence, stable, midi }` or `{ frequency: null, confidence: 0, stable: false }`
+**Returns:** `PitchResult` — `{ frequency, confidence, stable, midi? }` or `{ frequency: null, confidence: 0, stable: false }`
 
-**Tuning (adjust `config.js` first, not this file):**
+**Tuning (adjust `config.ts` first, not this file):**
 - `confidenceThreshold` (default `0.88`) — raise to reject weak/noisy signals, lower if detection misses notes
 - `stabilityFrames` (default `3`, ~50ms) — raise to reduce false triggers, lower if response feels laggy
 
@@ -89,16 +89,16 @@ Wraps `pitchy`'s `PitchDetector.forFloat32Array(fftSize)` with a stability buffe
 
 ## NoteMapper
 
-Pure functions only. No side effects, no imports other than `music.js` constants.
+Pure functions only. No side effects, no imports other than `music.ts` constants.
 
 | Function | Input | Output |
 |---|---|---|
-| `freqToMidi(freq)` | Hz | MIDI number (rounded) or `null` |
-| `midiToNote(midi)` | MIDI int | `{ midi, semitone, octave, name }` |
-| `freqToNote(freq)` | Hz | note object or `null` |
+| `freqToMidi(freq)` | `number \| null \| undefined` | MIDI number (rounded) or `null` |
+| `midiToNote(midi)` | MIDI int | `NoteBase` |
+| `freqToNote(freq)` | Hz | `NoteBase \| null` |
 | `noteToFreq(semitone, octave)` | semitone + octave | Hz |
 | `freqToCents(freq, targetMidi)` | Hz + MIDI | cents offset (+ = sharp, − = flat) |
 | `semitoneMatches(detected, target)` | two semitones | `boolean` (handles mod-12 wrap) |
 | `noteFullName(semitone, octave)` | semitone + octave | `"C4"`, `"F#3"` etc. |
 
-**Tests live in** `src/__tests__/NoteMapper.test.js` — run `bun test` after any changes here.
+**Tests live in** `src/__tests__/NoteMapper.test.ts` — run `bun test` after any changes here.

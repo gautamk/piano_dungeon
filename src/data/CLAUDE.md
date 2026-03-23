@@ -3,37 +3,31 @@
 ## Files
 | File | Role |
 |---|---|
-| `music.js` | Music theory data: note names, scales, chords, intervals, challenge roots |
-| `enemies.js` | Enemy archetypes and boss definitions |
+| `music.ts` | Music theory data: note names, scales, chords, intervals, challenge roots |
+| `songs.ts` | Song definitions (`SONGS` record and `SONGS_LIST` array) |
+| `enemies.ts` | Enemy archetypes and boss definitions |
 
-All exports are plain data (arrays, objects, pure functions). No side effects.
+All exports are plain data (arrays, objects, pure functions). No side effects. Types are imported from `src/types.ts`.
 
 ---
 
-## music.js
+## music.ts
 
 ### Constants
 | Export | Description |
 |---|---|
-| `NOTE_NAMES` | 12-element array `['C','C#','D',…,'B']` — index = semitone |
+| `NOTE_NAMES` | 12-element `string[]` `['C','C#','D',…,'B']` — index = semitone |
 | `A4_MIDI` | `69` |
 | `A4_FREQ` | `440.0` Hz |
-| `CHALLENGE_ROOTS` | Comfortable piano roots used in challenge generation (C3–B4 range) |
-| `SCALES` | Map of scale definitions |
-| `CHORDS` | Map of chord definitions |
-| `INTERVALS` | All 13 intervals (P1–P8) with `semitones` and display names |
+| `CHALLENGE_ROOTS` | `NoteReference[]` — comfortable piano roots used in challenge generation (C3–B4 range) |
+| `SCALES` | `Record<string, Scale>` — map of scale definitions |
+| `CHORDS` | `Record<string, Chord>` — map of chord definitions |
+| `INTERVALS` | `Interval[]` — all 13 intervals (P1–P8) with `semitones` and display names |
 
 ### Scale / Chord shape
-```js
-{
-  name: 'Major',
-  intervals: [0, 2, 4, 5, 7, 9, 11, 12], // semitone offsets from root
-  unlockFloor: 1,                          // floor at which this becomes available
-  description: '...',
-}
-```
+See `Scale` and `Chord` interfaces in `src/types.ts`.
 
-### `getAvailableIntervals(floor)`
+### `getAvailableIntervals(floor)` → `Interval[]`
 Returns the subset of `INTERVALS` unlocked at the given floor:
 - Floor < 3: none
 - Floor 3–4: P5, P8 only
@@ -54,49 +48,42 @@ Returns the subset of `INTERVALS` unlocked at the given floor:
 
 ---
 
-## enemies.js
+## songs.ts
 
-### `ENEMY_ARCHETYPES`
-Array of regular enemy objects, keyed by a `tier` that maps to floor ranges.
+Exports `SONGS: Record<string, Song>` and `SONGS_LIST: Song[]`. Songs are used by MELODY challenges and practice mode.
 
-### `ELITE_ARCHETYPES`
-Harder enemies that appear at 15% chance from floor 2+.
+See `Song` and `SongNote` interfaces in `src/types.ts`. Songs are generated from MIDI files via `bun scripts/midi-to-songs.js`.
 
-### `BOSS_ARCHETYPES`
-One boss per floor group. `getBossForFloor(floor)` selects the appropriate boss.
+---
 
-### Enemy shape
-```js
-{
-  name: 'Tone-Deaf Ghost',
-  emoji: '👻',
-  lore: 'Short flavour text shown in battle panel...',
-  maxHp: 40,
-  attackPower: 8,          // damage dealt to player on wrong note / timeout
-  tier: 1,                 // which floors this enemy appears on
-  challengeWeights: {      // relative frequency of each challenge type
-    NOTE: 10,
-    INTERVAL: 0,
-    SCALE: 0,
-    CHORD: 0,
-  },
-}
-```
+## enemies.ts
+
+### `ENEMY_ARCHETYPES: EnemyArchetype[]`
+Regular enemies keyed by `floorRange: [min, max]`.
+
+### `BOSSES: BossArchetype[]`
+One boss per floor group, keyed by `floor`.
+
+### Lookup functions
+| Function | Returns |
+|---|---|
+| `getEnemiesForFloor(floor)` | Regular enemy archetypes available on that floor |
+| `getEliteEnemiesForFloor(floor)` | Elite archetypes available on that floor |
+| `getBossForFloor(floor)` | The boss archetype for that floor |
+
+Enemy shapes are defined by `EnemyArchetype` / `BossArchetype` / `Enemy` in `src/types.ts`. `DungeonGenerator.ts` converts archetypes to live `Enemy` instances with scaled HP/attack.
 
 **Adding a new enemy:**
-1. Add to `ENEMY_ARCHETYPES` with an appropriate `tier`
-2. Set `challengeWeights` to reflect the enemy's musical theme:
-   - Early enemies: high `NOTE`, zero others
-   - Mid enemies: mix `NOTE` + `INTERVAL`
-   - Late enemies: include `SCALE` and `CHORD`
+1. Add to `ENEMY_ARCHETYPES` with an appropriate `floorRange`
+2. Set `challengeWeights` to reflect the enemy's musical theme
 3. Keep `attackPower` roughly proportional to tier (tier 1 ≈ 6–10, tier 3 ≈ 18–25)
-4. `maxHp` is the base value — `DungeonGenerator` scales it up per floor via `scaleHp()`
+4. `maxHp` is the base value — `DungeonGenerator` scales it per floor via `scaleHp()`
 
 **Adding a new boss:**
-1. Add to `BOSS_ARCHETYPES` with a `floor` property matching the target floor
+1. Add to `BOSSES` with a `floor` property matching the target floor
 2. Bosses should have `challengeWeights` that test the skills introduced on that floor
 3. Boss `maxHp` should be roughly 2–3× the regular enemy HP for that tier
 
 **Do not:**
-- Hardcode floor-specific HP scaling here — that lives in `DungeonGenerator.scaleHp()`
-- Add challenge logic to enemy data — `ChallengeEngine.js` handles all evaluation
+- Hardcode floor-specific HP scaling here — that lives in `DungeonGenerator.ts`
+- Add challenge logic to enemy data — `ChallengeEngine.ts` handles all evaluation

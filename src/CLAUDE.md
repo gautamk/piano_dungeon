@@ -4,7 +4,8 @@
 | File | Role |
 |---|---|
 | `main.ts` | Game entry: Excalibur engine, LegacyScene bridge, input handlers, render dispatch |
-| `config.js` | All tunable constants — change values here first before editing logic |
+| `types.ts` | Central shared interfaces — all game types defined here; import from here, never redeclare |
+| `config.ts` | All tunable constants — change values here first before editing logic |
 
 ---
 
@@ -17,7 +18,7 @@
 
 **The game loop** is owned by Excalibur. `LegacyActor.onPreUpdate(deltaMs)` replaces the old RAF loop:
 ```ts
-onPreUpdate(_engine, deltaMs) {
+onPreUpdate(_engine: ex.Engine, deltaMs: number): void {
   audio.tick();       // update mic pitch detection
   sm.tick(deltaMs);   // advance game state (delta already capped by Excalibur)
 }
@@ -46,7 +47,21 @@ Excalibur's `DisplayMode.FitScreen` handles letterboxing; `toLogicalCoords` uses
 
 ---
 
-## config.js
+## types.ts
+
+Single source of truth for all TypeScript interfaces and union types. Key exports:
+- Primitive unions: `ChallengeType`, `EvaluationResult`, `RoomType`, `BattlePhase`, `InputMode`, `Screen`
+- Music: `NoteReference`, `Scale`, `Chord`, `Interval`, `Song`, `SongNote`
+- Audio: `NoteBase`, `DetectedNote`, `VirtualNote`, `PitchResult`
+- Game: `Enemy`, `Room`, `GameState`, `PlayerState`, `BattleState`, `AudioState`, `DungeonState`
+- Challenges: `NoteChallenge`, `IntervalChallenge`, `ScaleChallenge`, `ChordChallenge`, `MelodyChallenge`, `Challenge` (union)
+- Rendering: `HitRegion`, `KeyRegion`, `RoomHitRegion`, `PracticeHitRegion`
+
+**Do not** define game types in other files — always import from `types.ts`.
+
+---
+
+## config.ts
 
 Single source of truth for every magic number in the game.
 
@@ -63,7 +78,7 @@ COLORS.keys              — piano key states
 ```
 
 **Rules:**
-- Never hardcode a colour or timing value outside `config.js`
-- Never import `config.js` inside `rendering/` directly from individual draw helpers — import it at the top of the renderer file and pass values down
-- To tune challenge difficulty: adjust `GAME_CONFIG.timing.*` — do not touch `ChallengeEngine.js` first
-- To tune audio sensitivity: adjust `GAME_CONFIG.audio.confidenceThreshold` and `stabilityFrames` before touching `PitchDetector.js`
+- Never hardcode a colour or timing value outside `config.ts`
+- Never import `config.ts` inside `rendering/` directly from individual draw helpers — import it at the top of the renderer file and pass values down
+- To tune challenge difficulty: adjust `GAME_CONFIG.timing.*` — do not touch `ChallengeEngine.ts` first
+- To tune audio sensitivity: adjust `GAME_CONFIG.audio.confidenceThreshold` and `stabilityFrames` before touching `PitchDetector.ts`

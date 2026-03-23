@@ -1,3 +1,4 @@
+import type { FeedbackMessage, PlayerState } from '../types.js';
 import { GAME_CONFIG, COLORS } from '../config.js';
 
 /**
@@ -5,16 +6,22 @@ import { GAME_CONFIG, COLORS } from '../config.js';
  * All coordinates use logical pixels (devicePixelRatio is applied internally).
  */
 export class Renderer {
-  constructor(canvasEl) {
+  canvas: HTMLCanvasElement;
+  ctx: CanvasRenderingContext2D;
+  W: number;
+  H: number;
+  dpr: number;
+
+  constructor(canvasEl: HTMLCanvasElement) {
     this.canvas = canvasEl;
-    this.ctx = canvasEl.getContext('2d');
+    this.ctx = canvasEl.getContext('2d') as CanvasRenderingContext2D;
     this.W = GAME_CONFIG.canvas.width;
     this.H = GAME_CONFIG.canvas.height;
     this.dpr = window.devicePixelRatio || 1;
     this._resize();
   }
 
-  _resize() {
+  private _resize(): void {
     const { dpr, W, H } = this;
     this.canvas.width = W * dpr;
     this.canvas.height = H * dpr;
@@ -23,14 +30,22 @@ export class Renderer {
     this.ctx.scale(dpr, dpr);
   }
 
-  clear() {
+  clear(): void {
     this.ctx.fillStyle = COLORS.bg;
     this.ctx.fillRect(0, 0, this.W, this.H);
   }
 
   // ─── Utility Drawing ────────────────────────────────────────────────────────
 
-  text(str, x, y, { size = 16, color = COLORS.text, align = 'left', font = 'monospace', weight = 'normal' } = {}) {
+  text(
+    str: string,
+    x: number,
+    y: number,
+    { size = 16, color = COLORS.text, align = 'left', font = 'monospace', weight = 'normal' }: {
+      size?: number; color?: string; align?: CanvasTextAlign;
+      font?: string; weight?: string;
+    } = {}
+  ): void {
     const ctx = this.ctx;
     ctx.font = `${weight} ${size}px ${font}`;
     ctx.fillStyle = color;
@@ -39,7 +54,7 @@ export class Renderer {
     ctx.fillText(str, x, y);
   }
 
-  rect(x, y, w, h, color, radius = 0) {
+  rect(x: number, y: number, w: number, h: number, color: string, radius = 0): void {
     const ctx = this.ctx;
     ctx.fillStyle = color;
     if (radius > 0) {
@@ -51,7 +66,7 @@ export class Renderer {
     }
   }
 
-  rectStroke(x, y, w, h, color, lineWidth = 1, radius = 0) {
+  rectStroke(x: number, y: number, w: number, h: number, color: string, lineWidth = 1, radius = 0): void {
     const ctx = this.ctx;
     ctx.strokeStyle = color;
     ctx.lineWidth = lineWidth;
@@ -64,7 +79,7 @@ export class Renderer {
     }
   }
 
-  line(x1, y1, x2, y2, color, lineWidth = 1) {
+  line(x1: number, y1: number, x2: number, y2: number, color: string, lineWidth = 1): void {
     const ctx = this.ctx;
     ctx.beginPath();
     ctx.moveTo(x1, y1);
@@ -75,7 +90,13 @@ export class Renderer {
   }
 
   /** Draw a horizontal bar (e.g. HP bar). */
-  bar(x, y, w, h, value, max, fillColor, bgColor = COLORS.surface, radius = 3) {
+  bar(
+    x: number, y: number, w: number, h: number,
+    value: number, max: number,
+    fillColor: string,
+    bgColor = COLORS.surface,
+    radius = 3
+  ): void {
     this.rect(x, y, w, h, bgColor, radius);
     const filled = w * Math.max(0, Math.min(1, value / max));
     if (filled > 0) this.rect(x, y, filled, h, fillColor, radius);
@@ -83,7 +104,7 @@ export class Renderer {
   }
 
   /** Floating feedback labels (damage numbers, etc.) */
-  renderFeedback(feedback) {
+  renderFeedback(feedback: FeedbackMessage[]): void {
     const ctx = this.ctx;
     for (const f of feedback) {
       const alpha = Math.min(1, f.ttl / 400);
@@ -94,12 +115,12 @@ export class Renderer {
   }
 
   /** Centered text on screen. */
-  centeredText(str, y, opts = {}) {
+  centeredText(str: string, y: number, opts: Parameters<Renderer['text']>[3] = {}): void {
     this.text(str, this.W / 2, y, { align: 'center', ...opts });
   }
 
   /** Row of HP hearts centred on (cx, y). */
-  hpHearts(player, cx, y, size = 20) {
+  hpHearts(player: PlayerState, cx: number, y: number, size = 20): void {
     const ctx = this.ctx;
     const spacing = Math.round(size * 1.4);
     ctx.font = `${size}px monospace`;

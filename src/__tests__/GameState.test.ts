@@ -7,8 +7,9 @@ import {
   spawnFeedback,
   tickFeedback,
 } from '../game/GameState.js';
+import type { GameState } from '../types.js';
 
-function makeState(overrides = {}) {
+function makeState(overrides: { player?: Partial<GameState['player']>; feedback?: GameState['feedback'] } = {}): GameState {
   const s = createGameState();
   s.player = { ...s.player, ...overrides.player };
   if (overrides.feedback) s.feedback = overrides.feedback;

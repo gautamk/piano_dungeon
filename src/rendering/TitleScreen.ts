@@ -1,9 +1,11 @@
+import type { GameState, HitRegion } from '../types.js';
 import { COLORS, GAME_CONFIG } from '../config.js';
+import type { Renderer } from './Renderer.js';
 
 const W = GAME_CONFIG.canvas.width;
 const H = GAME_CONFIG.canvas.height;
 
-export function renderTitleScreen(renderer, state) {
+export function renderTitleScreen(renderer: Renderer, state: GameState): void {
   renderer.rect(0, 0, W, H, COLORS.bg);
 
   // Title
@@ -55,7 +57,7 @@ export function renderTitleScreen(renderer, state) {
   });
 }
 
-export function getStartButtonRegion() {
+export function getStartButtonRegion(): HitRegion {
   const btnW = 280, btnH = 50;
   return { x: W / 2 - btnW / 2, y: H / 2 + 218, w: btnW, h: btnH };
 }

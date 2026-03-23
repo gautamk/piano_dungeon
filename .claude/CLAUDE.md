@@ -4,49 +4,55 @@
 Browser-based piano teaching roguelike. Uses Web Audio API for real-time pitch detection
 from a USB-C piano microphone. TypeScript + ES modules + Vite + Excalibur.js game engine.
 
+## Task Management
+Track all new work in **beads** (`bd create`, `bd list`, `bd close`). Do not maintain inline task lists inside CLAUDE.md files — open a bead instead.
+
 ## Architecture
 ```
 src/
 ├── main.ts              # Entry: game loop, input, render dispatch (Excalibur LegacyScene bridge)
-├── config.js            # Constants (GAME_CONFIG, COLORS) — change values here first
+├── types.ts             # Central shared interfaces — all game types defined here
+├── config.ts            # Constants (GAME_CONFIG, COLORS) — change values here first
 ├── audio/
-│   ├── AudioEngine.js   # Mic input: owns the input AudioContext + MediaStream lifecycle
-│   ├── AudioSynth.js    # Audio output: Tone.js piano synth for note playback + previews
-│   ├── PitchDetector.js # McLeod Pitch Method detection via pitchy (most critical file)
-│   └── NoteMapper.js    # Pure functions: Hz → MIDI → note name
+│   ├── AudioEngine.ts   # Mic input: owns the input AudioContext + MediaStream lifecycle
+│   ├── AudioSynth.ts    # Audio output: Tone.js piano synth for note playback + previews
+│   ├── PitchDetector.ts # McLeod Pitch Method detection via pitchy (most critical file)
+│   └── NoteMapper.ts    # Pure functions: Hz → MIDI → note name
 ├── game/
-│   ├── GameState.js     # Plain mutable object — single source of truth
-│   ├── StateMachine.js  # All screen transitions and game logic live here
-│   ├── DungeonGenerator.js  # Seeded procedural floor generation
-│   └── ChallengeEngine.js   # Challenge generation + note evaluation
+│   ├── GameState.ts     # Plain mutable object — single source of truth
+│   ├── StateMachine.ts  # All screen transitions and game logic live here
+│   ├── DungeonGenerator.ts  # Seeded procedural floor generation
+│   └── ChallengeEngine.ts   # Challenge generation + note evaluation
 ├── data/
-│   ├── music.js         # Notes, scales, chords, intervals (music theory data)
-│   └── enemies.js       # Enemy archetypes and bosses
+│   ├── music.ts         # Notes, scales, chords, intervals (music theory data)
+│   ├── songs.ts         # Song definitions (SONGS, SONGS_LIST)
+│   └── enemies.ts       # Enemy archetypes and bosses
 └── rendering/
-    ├── Renderer.js       # Canvas wrapper + utility drawing methods
-    ├── BattleScreen.js   # Battle screen layout
-    ├── DungeonScreen.js  # Dungeon map layout + click hit regions
-    ├── PianoRenderer.js  # Piano keyboard strip (always visible in battle)
-    ├── TitleScreen.js    # Title + mic setup screen
-    └── OverlayScreens.js # Room clear, floor clear, shop, game over, victory
+    ├── Renderer.ts       # Canvas wrapper + utility drawing methods
+    ├── BattleScreen.ts   # Battle screen layout
+    ├── DungeonScreen.ts  # Dungeon map layout + click hit regions
+    ├── PianoRenderer.ts  # Piano keyboard strip (always visible in battle)
+    ├── TitleScreen.ts    # Title + mic setup screen
+    └── OverlayScreens.ts # Room clear, floor clear, shop, game over, victory
 ```
 
 ## Rules
 
 ### Code Style
 1. ES modules throughout (`import`/`export`) — no CommonJS, no dynamic `require()`
-2. TypeScript (`.ts`) for all new files. Legacy `.js` files are migrated one per bead. No JSX, no framework.
+2. TypeScript (`.ts`) for all files. `tsconfig.json` has `strict: true` and no `allowJs`. No JSX, no framework.
 3. Approved runtime deps: `excalibur` (game engine), `pitchy` (pitch detection), `tone` (audio output). Do not add others without strong justification.
 4. Canvas for all game rendering — no DOM manipulation inside game screens
 5. Keep functions under 50 lines — extract helpers when they grow
 
 ### Architecture
-6. `StateMachine.js` is the only file that calls `sm.go()` — never transition from renderers
-7. `ChallengeEngine.js` is the only file that calls `evaluateNote()` — single evaluation path
-8. `AudioEngine.js` owns the **input** AudioContext (mic pipeline). `AudioSynth.js` owns Tone.js output. Never mix the two contexts.
-9. `GameState.js` holds the only mutable game state — renderers receive it as a parameter, never import it directly
-10. Renderers are pure render functions `(renderer, state) => void` — no side effects, no state writes
-11. `DungeonGenerator.js` must remain deterministic given the same seed
+6. `StateMachine.ts` is the only file that calls `sm.go()` — never transition from renderers
+7. `ChallengeEngine.ts` is the only file that calls `evaluateNote()` — single evaluation path
+8. `AudioEngine.ts` owns the **input** AudioContext (mic pipeline). `AudioSynth.ts` owns Tone.js output. Never mix the two contexts.
+9. `GameState.ts` holds the only mutable game state — renderers receive it as a parameter, never import it directly
+10. Renderers are pure render functions `(renderer: Renderer, state: GameState) => void` — no side effects, no state writes
+11. `DungeonGenerator.ts` must remain deterministic given the same seed
+12. All shared interfaces live in `src/types.ts` — do not duplicate type definitions across files
 
 ### What NOT To Do
 - Do not add JSX, or non-TypeScript compile-to-JS languages (CoffeeScript, etc.)
@@ -61,14 +67,14 @@ src/
 - Confidence threshold is in `GAME_CONFIG.audio.confidenceThreshold` (default 0.88)
 - Stability frames in `GAME_CONFIG.audio.stabilityFrames` (default 3 frames ~50ms)
 - If piano detection is too sensitive/slow, adjust these values first before changing algorithm
-- `PitchDetector.js` uses pitchy's McLeod Pitch Method — more accurate than autocorrelation for piano, avoids octave errors. Do not replace without profiling first.
-- Challenge preview volume is controlled in `AudioSynth.js` (`_previewSynth` volume, default -14 dB). Virtual piano volume is `_synth` (default -4 dB).
+- `PitchDetector.ts` uses pitchy's McLeod Pitch Method — more accurate than autocorrelation for piano, avoids octave errors. Do not replace without profiling first.
+- Challenge preview volume is controlled in `AudioSynth.ts` (`_previewSynth` volume, default -14 dB). Virtual piano volume is `_synth` (default -4 dB).
 
 ### Adding Content
-- New enemy: add to `src/data/enemies.js` `ENEMY_ARCHETYPES` array
-- New challenge type: add type constant to `ChallengeEngine.js` `CHALLENGE_TYPE`, implement `generateChallenge` and `evaluateNote` branches, add rendering in `BattleScreen.js`
-- New floor theme: add to `DungeonScreen.js` `floorTheme()` function
-- New music theory content: add to `src/data/music.js`
+- New enemy: add to `src/data/enemies.ts` `ENEMY_ARCHETYPES` array
+- New challenge type: add type constant to `ChallengeEngine.ts` `CHALLENGE_TYPE`, implement `generateChallenge` and `evaluateNote` branches, add rendering in `BattleScreen.ts`
+- New floor theme: add to `DungeonScreen.ts` `floorTheme()` function
+- New music theory content: add to `src/data/music.ts`
 
 ### Runtime
 - Project uses **Bun** (not Node.js) — use `bun` for all scripts and package management

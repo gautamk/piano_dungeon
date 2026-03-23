@@ -2,18 +2,21 @@ import { describe, it, expect, vi } from 'vitest';
 import { StateMachine } from '../game/StateMachine.js';
 import { CHALLENGE_TYPE } from '../game/ChallengeEngine.js';
 import { ROOM_TYPE } from '../game/DungeonGenerator.js';
+import type { AudioEngine } from '../audio/AudioEngine.js';
+import type { AudioSynth } from '../audio/AudioSynth.js';
+import type { Enemy, Challenge, VirtualNote } from '../types.js';
 
 // Minimal stubs — StateMachine only reads .currentNote, .rawFrequency, .inputMode, .devices
-function makeAudio(note = null) {
-  return { currentNote: note, rawFrequency: null, inputMode: 'none', devices: [] };
+function makeAudio(note: { semitone: number; octave: number; midi: number; name: string } | null = null) {
+  return { currentNote: note, rawFrequency: null, inputMode: 'none', devices: [] } as unknown as AudioEngine;
 }
 
 function makeSynth() {
-  return { playNote: vi.fn(), previewChallenge: vi.fn() };
+  return { playNote: vi.fn(), previewChallenge: vi.fn() } as unknown as AudioSynth;
 }
 
 // Build a minimal NOTE challenge
-function makeNoteChallenge(semitone = 0) {
+function makeNoteChallenge(semitone = 0): Challenge {
   return {
     type: CHALLENGE_TYPE.NOTE,
     label: 'Play C4',
@@ -21,11 +24,11 @@ function makeNoteChallenge(semitone = 0) {
     sequence: [semitone],
     progress: 0,
     timeMs: 4000,
-  };
+  } as unknown as Challenge;
 }
 
 // Build a minimal enemy
-function makeEnemy(overrides = {}) {
+function makeEnemy(overrides: Partial<Enemy> = {}): Enemy {
   return {
     name: 'Test Enemy',
     emoji: '👾',
@@ -37,11 +40,11 @@ function makeEnemy(overrides = {}) {
     song: null,
     challengeWeights: { NOTE: 10, INTERVAL: 0, SCALE: 0, CHORD: 0, MELODY: 0 },
     ...overrides,
-  };
+  } as Enemy;
 }
 
 // Seed battle state directly on sm.state without going through dungeon generation
-function setupBattle(sm, enemy = makeEnemy(), challenge = makeNoteChallenge()) {
+function setupBattle(sm: StateMachine, enemy: Enemy = makeEnemy(), challenge: Challenge = makeNoteChallenge()): void {
   const s = sm.state;
   // Add a fake room at index 0
   s.dungeon.rooms = [{ type: ROOM_TYPE.COMBAT, index: 0, enemy, cleared: false, reachable: true }];
@@ -75,14 +78,14 @@ describe('triggerVirtualNote — queue management', () => {
     const sm = new StateMachine(makeAudio(), makeSynth());
     sm.triggerVirtualNote(4, 4); // E4
     expect(sm.state.audio.virtualNote).not.toBeNull();
-    expect(sm.state.audio.virtualNote.semitone).toBe(4);
+    expect(sm.state.audio.virtualNote!.semitone).toBe(4);
   });
 
   it('calls synth.playNote when synth is available', () => {
     const synth = makeSynth();
     const sm = new StateMachine(makeAudio(), synth);
     sm.triggerVirtualNote(7, 4);
-    expect(synth.playNote).toHaveBeenCalledWith(7, 4);
+    expect((synth as unknown as { playNote: ReturnType<typeof vi.fn> }).playNote).toHaveBeenCalledWith(7, 4);
   });
 
   it('does not throw when synth is null', () => {
@@ -110,7 +113,7 @@ describe('mic cooldown', () => {
     sm._micEvalCooldownMs = 300;
 
     // Send a mic note matching the target
-    audio.currentNote = { semitone: 4, octave: 4, midi: 64, name: 'E' };
+    (audio as unknown as { currentNote: object }).currentNote = { semitone: 4, octave: 4, midi: 64, name: 'E' };
     sm.tick(16);
     // Mic note was blocked — challenge should still be WAITING
     expect(sm.state.battle.phase).toBe('WAITING');
@@ -122,7 +125,7 @@ describe('mic cooldown', () => {
     setupBattle(sm, makeEnemy(), makeNoteChallenge(4)); // target = E4
     sm._micEvalCooldownMs = 10;
 
-    audio.currentNote = { semitone: 4, octave: 4, midi: 64, name: 'E' };
+    (audio as unknown as { currentNote: object }).currentNote = { semitone: 4, octave: 4, midi: 64, name: 'E' };
     sm.tick(20); // cooldown decremented by 20 → expired
     // Mic note evaluated — challenge result set
     expect(sm.state.battle.phase).not.toBe('IDLE');
@@ -133,17 +136,16 @@ describe('mic cooldown', () => {
 
 describe('_lastActedMidi sustain guard', () => {
   it('does not double-evaluate the same held MIDI note', () => {
-    const audio = makeAudio({ semitone: 0, octave: 4, midi: 48, name: 'C' });
     const sm = new StateMachine(makeAudio(), makeSynth());
     setupBattle(sm, makeEnemy(), makeNoteChallenge(0)); // target = C
 
     // Manually inject the current note
-    sm.state.audio.note = { semitone: 0, octave: 4, midi: 48, name: 'C' };
+    sm.state.audio.note = { semitone: 0, octave: 4, midi: 48, name: 'C', frequency: 130.81, cents: 0 };
     sm.tick(16); // first evaluation → sets _lastActedMidi = 48
 
     // Second tick with same MIDI → should be blocked
     const phaseBefore = sm.state.battle.phase;
-    sm.state.audio.note = { semitone: 0, octave: 4, midi: 48, name: 'C' };
+    sm.state.audio.note = { semitone: 0, octave: 4, midi: 48, name: 'C', frequency: 130.81, cents: 0 };
     sm.tick(16);
     // Phase should not have changed again (already in RESULT after first eval)
     expect(sm.state.battle.phase).toBe(phaseBefore);
@@ -215,9 +217,9 @@ describe('virtual note queue consumption', () => {
     setupBattle(sm, makeEnemy(), makeNoteChallenge(0));
     // Push 3 virtual notes — C, D, E
     sm._virtualNoteQueue = [
-      { semitone: 0, octave: 4, midi: 48, name: 'C', virtual: true },
-      { semitone: 2, octave: 4, midi: 50, name: 'D', virtual: true },
-      { semitone: 4, octave: 4, midi: 52, name: 'E', virtual: true },
+      { semitone: 0, octave: 4, midi: 48, name: 'C', frequency: null, cents: 0, virtual: true } as VirtualNote,
+      { semitone: 2, octave: 4, midi: 50, name: 'D', frequency: null, cents: 0, virtual: true } as VirtualNote,
+      { semitone: 4, octave: 4, midi: 52, name: 'E', frequency: null, cents: 0, virtual: true } as VirtualNote,
     ];
     sm.tick(16);
     expect(sm._virtualNoteQueue).toHaveLength(2); // only one consumed
@@ -232,10 +234,10 @@ describe('virtual note queue consumption', () => {
       sequence: [0, 7],
       progress: 0,
       timeMs: 5000,
-    };
+    } as unknown as Challenge;
     setupBattle(sm, makeEnemy(), intervalChallenge);
-    sm._virtualNoteQueue = [{ semitone: 0, octave: 4, midi: 48, name: 'C', virtual: true }];
-    sm.state.audio.virtualNote = { semitone: 0, octave: 4, midi: 48, name: 'C' };
+    sm._virtualNoteQueue = [{ semitone: 0, octave: 4, midi: 48, name: 'C', frequency: null, cents: 0, virtual: true } as VirtualNote];
+    sm.state.audio.virtualNote = { semitone: 0, octave: 4, midi: 48, name: 'C', frequency: null, cents: 0, virtual: true };
     sm.tick(16); // consume C → PROGRESS, phase stays WAITING, queue now empty
     sm.tick(16); // queue empty & no virtual note → virtualNote cleared
     expect(sm.state.audio.virtualNote).toBeNull();

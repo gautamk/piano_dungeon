@@ -1,10 +1,12 @@
+import type { GameState, FeedbackMessage } from '../types.js';
+
 /**
  * Single mutable store for all game state.
  * Renderers read from here; game logic writes to here via the state machine.
  * Never import this directly in renderers — pass it as a parameter.
  */
 
-export function createGameState() {
+export function createGameState(): GameState {
   return {
     screen: 'TITLE', // current screen name
 
@@ -58,30 +60,31 @@ export function createGameState() {
 }
 
 /** Mutate player HP, clamping to [0, maxHp]. Returns true if player died. */
-export function damagePlayer(state, amount) {
+export function damagePlayer(state: GameState, amount: number): boolean {
   state.player.hp = Math.max(0, state.player.hp - amount);
   state.player.combo = 0;
   return state.player.hp === 0;
 }
 
 /** Heal player, clamping to maxHp. */
-export function healPlayer(state, amount) {
+export function healPlayer(state: GameState, amount: number): void {
   state.player.hp = Math.min(state.player.maxHp, state.player.hp + amount);
 }
 
 /** Add score and advance combo. */
-export function scoreHit(state, baseDamage) {
+export function scoreHit(state: GameState, baseDamage: number): void {
   state.player.combo++;
   state.player.score += baseDamage;
 }
 
 /** Spawn a floating feedback label on the canvas. */
-export function spawnFeedback(state, text, x, y, color) {
-  state.feedback.push({ text, x, y, color, ttl: 1200, vy: -1.5 });
+export function spawnFeedback(state: GameState, text: string, x: number, y: number, color: string): void {
+  const msg: FeedbackMessage = { text, x, y, color, ttl: 1200, vy: -1.5 };
+  state.feedback.push(msg);
 }
 
 /** Advance feedback animations each frame (deltaMs). */
-export function tickFeedback(state, deltaMs) {
+export function tickFeedback(state: GameState, deltaMs: number): void {
   for (const f of state.feedback) {
     f.ttl -= deltaMs;
     f.y += f.vy;
