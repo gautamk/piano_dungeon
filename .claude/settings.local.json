@@ -25,7 +25,15 @@
       "Bash(bd ready:*)",
       "Bash(bd create:*)",
       "Bash(bd show:*)",
-      "Bash(bd close:*)"
+      "Bash(bd close:*)",
+      "Bash(bd dolt:*)",
+      "Bash(git remote:*)",
+      "Bash(gh repo:*)",
+      "Bash(gh api:*)",
+      "Bash(bunx bdui:*)",
+      "Bash(bunx tsc:*)",
+      "Bash(bd ls:*)",
+      "Bash(bd list:*)"
     ]
   }
 }

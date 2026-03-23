@@ -11,6 +11,7 @@
   },
   "devDependencies": {
     "@types/node": "^25.5.0",
+    "beads-ui": "github:mantoni/beads-ui",
     "typescript": "^5.9.3",
     "vite": "^5.0.0",
     "vitest": "^4.1.0"
