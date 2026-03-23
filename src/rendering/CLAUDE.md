@@ -28,6 +28,7 @@
 ### Coordinate system
 - Logical canvas: **1280 × 720** regardless of device DPI
 - `Renderer._resize()` applies `devicePixelRatio` scaling internally — draw at logical coords always
+- **With Excalibur:** `renderer.ctx` is swapped to the `ex.Canvas` offscreen ctx each frame in `LegacyActor.draw`. The offscreen ctx is already at 1:1 scale (no DPR transform needed). `Renderer` must be initialised with a detached canvas (`document.createElement('canvas')`), not `engine.canvas` (which is WebGL).
 
 ### Utility methods
 | Method | Use for |
@@ -144,5 +145,5 @@ Full-screen overlays drawn on top of the previous screen or standalone.
 **Adding a new overlay screen:**
 1. Add `renderXxxScreen(renderer, state)` here
 2. Add `getXxxHitRegion()` if it has interactive buttons
-3. Wire both into `main.js` render switch and click handler
+3. Wire both into `main.ts` render switch and click handler
 4. Add the transition in `StateMachine`

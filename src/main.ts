@@ -1,3 +1,4 @@
+import * as ex from 'excalibur';
 import { AudioEngine } from './audio/AudioEngine.js';
 import { AudioSynth } from './audio/AudioSynth.js';
 import { StateMachine } from './game/StateMachine.js';
@@ -19,27 +20,26 @@ import {
   getPracticeHitRegions,
 } from './rendering/OverlayScreens.js';
 
-// ─── Init ─────────────────────────────────────────────────────────────────────
+// ─── Engine ───────────────────────────────────────────────────────────────────
 
-const canvas = document.getElementById('game');
+const engine = new ex.Engine({
+  canvasElementId: 'game',
+  width: 1280,
+  height: 720,
+  displayMode: ex.DisplayMode.FitScreen,
+  suppressPlayButton: true,
+  backgroundColor: ex.Color.fromHex('#0a0a0f'),
+});
+
+// ─── Game objects ─────────────────────────────────────────────────────────────
+
 const audio = new AudioEngine();
 const synth = new AudioSynth();
 const sm = new StateMachine(audio, synth);
-const renderer = new Renderer(canvas);
-
-// Scale canvas to fill window (letterboxed)
-function resizeCanvas() {
-  const scaleX = window.innerWidth / 1280;
-  const scaleY = window.innerHeight / 720;
-  const scale = Math.min(scaleX, scaleY);
-  canvas.style.transform = `scale(${scale})`;
-  canvas.style.transformOrigin = 'top left';
-  canvas.style.position = 'absolute';
-  canvas.style.left = `${(window.innerWidth - 1280 * scale) / 2}px`;
-  canvas.style.top = `${(window.innerHeight - 720 * scale) / 2}px`;
-}
-window.addEventListener('resize', resizeCanvas);
-resizeCanvas();
+// Excalibur uses WebGL by default; getContext('2d') on engine.canvas returns null.
+// Use a detached canvas for Renderer init — ctx gets swapped to ex.Canvas offscreen ctx each frame.
+const _dummyCanvas = document.createElement('canvas');
+const renderer = new Renderer(_dummyCanvas);
 
 // PIANO_LAYOUT is imported from BattleScreen.js — single source of truth for hit testing
 
@@ -72,6 +72,8 @@ const KEY_NOTE_MAP = {
 };
 
 // ─── Coordinate helpers ───────────────────────────────────────────────────────
+
+const canvas = engine.canvas;
 
 function toLogicalCoords(e) {
   const rect = canvas.getBoundingClientRect();
@@ -231,22 +233,39 @@ function render(state) {
   }
 }
 
-// ─── Game Loop ────────────────────────────────────────────────────────────────
+// ─── Legacy bridge ────────────────────────────────────────────────────────────
 
-let lastTime = 0;
+class LegacyActor extends ex.Actor {
+  constructor() {
+    super({ x: 0, y: 0, anchor: ex.Vector.Zero });
+    const legacyCanvas = new ex.Canvas({
+      width: 1280,
+      height: 720,
+      cache: false, // redraw every frame
+      draw: (ctx) => {
+        renderer.ctx = ctx; // swap to offscreen ctx each frame (no dpr scale needed)
+        render(sm.state);
+      },
+    });
+    this.graphics.use(legacyCanvas);
+  }
 
-function loop(now) {
-  const delta = Math.min(now - lastTime, 100);
-  lastTime = now;
-
-  audio.tick();
-  sm.tick(delta);
-  render(sm.state);
-
-  requestAnimationFrame(loop);
+  onPreUpdate(_engine, deltaMs) {
+    audio.tick();
+    sm.tick(deltaMs);
+  }
 }
 
-requestAnimationFrame((now) => { lastTime = now; requestAnimationFrame(loop); });
+class LegacyScene extends ex.Scene {}
+
+const legacyScene = new LegacyScene();
+legacyScene.add(new LegacyActor());
+engine.addScene('legacy', legacyScene);
+engine.goToScene('legacy');
+
+// ─── Start ────────────────────────────────────────────────────────────────────
+
+engine.start();
 
 // Debug hook — exposes game internals for preview/testing
-window.__game = { sm, audio, synth, startGame: () => sm.onStartGame() };
+window.__game = { sm, audio, synth, engine, startGame: () => sm.onStartGame() };

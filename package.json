@@ -10,11 +10,14 @@
     "test:watch": "vitest"
   },
   "devDependencies": {
+    "@types/node": "^25.5.0",
+    "typescript": "^5.9.3",
     "vite": "^5.0.0",
     "vitest": "^4.1.0"
   },
   "dependencies": {
     "@tonejs/midi": "^2.0.28",
+    "excalibur": "^0.32.0",
     "pitchy": "^4.1.0",
     "tone": "^15.1.22"
   }

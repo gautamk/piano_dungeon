@@ -23,7 +23,7 @@ Both are stored as `this.audio` and `this.synth`. `audioSynth` may be `null` (ga
 ### Public API
 | Method | When to call |
 |---|---|
-| `sm.tick(deltaMs)` | Every animation frame from `main.js` |
+| `sm.tick(deltaMs)` | Every frame from `LegacyActor.onPreUpdate` in `main.ts` |
 | `sm.triggerVirtualNote(semitone, octave)` | On virtual piano key press (click or keyboard) |
 | `sm.onStartGame()` | After mic + synth initialised on title screen |
 | `sm.onEnterRoom(index)` | On room click in dungeon map |
@@ -51,7 +51,7 @@ In `_tickBattle`: virtual note takes priority over mic note for evaluation, but 
 1. Add a `go('MY_SCREEN')` call from the appropriate handler
 2. Add `if (screen === 'MY_SCREEN') { ... }` in `_onEnter()`
 3. Add per-frame logic in `_tickScreen()` if needed
-4. Add the render branch in `main.js`
+4. Add the render branch in `main.ts` (legacy) or create a new Excalibur Scene
 
 ---
 

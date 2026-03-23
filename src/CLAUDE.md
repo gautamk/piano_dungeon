@@ -3,38 +3,40 @@
 ## Files
 | File | Role |
 |---|---|
-| `main.js` | Game entry: wires all modules, owns the game loop, handles all input |
+| `main.ts` | Game entry: Excalibur engine, LegacyScene bridge, input handlers, render dispatch |
 | `config.js` | All tunable constants — change values here first before editing logic |
 
 ---
 
-## main.js
+## main.ts
 
 **This is the only file allowed to:**
 - Import and instantiate `AudioEngine`, `AudioSynth`, `StateMachine`, `Renderer`
-- Register DOM event listeners (`canvas click`, `keydown`, `keyup`, `resize`)
-- Call `requestAnimationFrame` — the loop lives here and nowhere else
+- Create the `ex.Engine` and define `LegacyActor` / `LegacyScene`
+- Register DOM event listeners (`canvas click`, `keydown`, `keyup`)
 
-**The game loop (`loop`)** must stay synchronous. Pattern:
-```js
-function loop(now) {
-  const delta = Math.min(now - lastTime, 100); // cap at 100ms to survive tab backgrounding
-  lastTime = now;
+**The game loop** is owned by Excalibur. `LegacyActor.onPreUpdate(deltaMs)` replaces the old RAF loop:
+```ts
+onPreUpdate(_engine, deltaMs) {
   audio.tick();       // update mic pitch detection
-  sm.tick(delta);     // advance game state
-  render(sm.state);   // draw current frame
-  requestAnimationFrame(loop);
+  sm.tick(deltaMs);   // advance game state (delta already capped by Excalibur)
 }
 ```
+Rendering fires via `ex.Canvas.draw(ctx)` — the callback swaps `renderer.ctx` to the offscreen ctx then calls `render(sm.state)`.
+
+**Important:** Excalibur uses WebGL by default. `engine.canvas.getContext('2d')` returns `null`.
+Always initialise `Renderer` with a detached canvas: `new Renderer(document.createElement('canvas'))`.
+The `renderer.ctx` is replaced each frame inside the `ex.Canvas` draw callback.
 
 **Input handling rules:**
+- `canvas` is `engine.canvas` — click listeners attach to it directly
 - Click coordinates must always be converted via `toLogicalCoords(e)` before any hit testing
 - Piano key regions return `{ semitone, octave }` — pass both directly to `sm.triggerVirtualNote()`
 - Keyboard piano keys use `KEY_NOTE_MAP`; guard with `heldKeys` to prevent key-repeat spam
 - `handleTitleStart()` is the only async call in the input path — it initialises mic + synth
 
 **Coordinate system:** All logical coordinates are 1280×720 regardless of display DPI or window size.
-The canvas is CSS-scaled; `toLogicalCoords` undoes the scale transform before hit testing.
+Excalibur's `DisplayMode.FitScreen` handles letterboxing; `toLogicalCoords` uses `getBoundingClientRect()` for pointer mapping.
 
 **Adding a new screen:**
 1. Add a render branch in `render(state)`

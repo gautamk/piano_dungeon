@@ -2,12 +2,12 @@
 
 ## Project Overview
 Browser-based piano teaching roguelike. Uses Web Audio API for real-time pitch detection
-from a USB-C piano microphone. Vanilla JS + ES modules + Vite. No framework, no TypeScript.
+from a USB-C piano microphone. TypeScript + ES modules + Vite + Excalibur.js game engine.
 
 ## Architecture
 ```
 src/
-├── main.js              # Entry: game loop, input, render dispatch
+├── main.ts              # Entry: game loop, input, render dispatch (Excalibur LegacyScene bridge)
 ├── config.js            # Constants (GAME_CONFIG, COLORS) — change values here first
 ├── audio/
 │   ├── AudioEngine.js   # Mic input: owns the input AudioContext + MediaStream lifecycle
@@ -35,8 +35,8 @@ src/
 
 ### Code Style
 1. ES modules throughout (`import`/`export`) — no CommonJS, no dynamic `require()`
-2. Vanilla JS only — no TypeScript, no JSX, no framework
-3. Approved runtime deps: `pitchy` (pitch detection), `tone` (audio output). Do not add others without strong justification.
+2. TypeScript (`.ts`) for all new files. Legacy `.js` files are migrated one per bead. No JSX, no framework.
+3. Approved runtime deps: `excalibur` (game engine), `pitchy` (pitch detection), `tone` (audio output). Do not add others without strong justification.
 4. Canvas for all game rendering — no DOM manipulation inside game screens
 5. Keep functions under 50 lines — extract helpers when they grow
 
@@ -49,9 +49,9 @@ src/
 11. `DungeonGenerator.js` must remain deterministic given the same seed
 
 ### What NOT To Do
-- Do not add TypeScript, JSX, or any compile-to-JS language
+- Do not add JSX, or non-TypeScript compile-to-JS languages (CoffeeScript, etc.)
 - Do not add React, Vue, Svelte, or any UI framework
-- Do not add runtime npm dependencies beyond `pitchy` and `tone`
+- Do not add runtime npm dependencies beyond `excalibur`, `pitchy`, and `tone`
 - Do not use `setTimeout`/`setInterval` for game timing — use delta time from the game loop
 - Do not use `async/await` inside the game loop — only at initialization boundaries
 - Do not add a CSS framework or preprocessor
@@ -73,6 +73,12 @@ src/
 ### Runtime
 - Project uses **Bun** (not Node.js) — use `bun` for all scripts and package management
 - `bun test` runs vitest; `bun scripts/midi-to-songs.js` runs the MIDI converter
+
+### Excalibur + Legacy Bridge
+- `main.ts` creates `ex.Engine({ canvasElementId: 'game', displayMode: FitScreen })` and wires up `LegacyScene` + `LegacyActor`
+- `LegacyActor.onPreUpdate(deltaMs)` runs the game tick (`audio.tick()`, `sm.tick()`); an `ex.Canvas` graphic (offscreen, `cache: false`) swaps `renderer.ctx` each frame and calls the legacy `render()` dispatcher
+- Excalibur uses WebGL by default — **do not** pass `engine.canvas` to `new Renderer()`; use a detached dummy canvas instead (ctx is replaced per frame)
+- New game screens should be proper Excalibur Scenes. Legacy screens remain in `LegacyScene` until their migration bead.
 
 ### Git
 - Commit working game states only — the game loop must run without errors
