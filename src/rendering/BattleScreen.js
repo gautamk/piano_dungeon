@@ -33,11 +33,13 @@ export function renderBattleScreen(renderer, state) {
   const pianoW = W - 120;
   renderPianoStrip(renderer, {
     audioNote: audio.note,
+    virtualNote: audio.virtualNote ?? null,
     challenge,
     x: pianoX,
     y: pianoY,
     width: pianoW,
     height: pianoH,
+    inputMode: audio.inputMode ?? 'none',
   });
 
   // ── Floor indicator
@@ -92,15 +94,8 @@ function renderPlayerPanel(renderer, player) {
   // HP hearts
   const hp = player.hp;
   const maxHp = player.maxHp;
-  let hearts = '';
-  for (let i = 0; i < maxHp; i++) hearts += i < hp ? '♥ ' : '♡ ';
-  renderer.text(hearts.trim(), x + 16, y + 50, {
-    size: 16, color: i => i < hp ? COLORS.hp : COLORS.textDim,
-  });
-
-  // Draw hearts manually for color control
   const ctx = renderer.ctx;
-  ctx.font = '16px monospace';
+  ctx.font = '18px monospace';
   ctx.textBaseline = 'middle';
   for (let i = 0; i < maxHp; i++) {
     ctx.fillStyle = i < hp ? COLORS.hp : COLORS.border;

@@ -3,10 +3,6 @@ import { COLORS, GAME_CONFIG } from '../config.js';
 const W = GAME_CONFIG.canvas.width;
 const H = GAME_CONFIG.canvas.height;
 
-/**
- * Renders the title / mic setup screen.
- * onStart(deviceId) is called when user clicks Start.
- */
 export function renderTitleScreen(renderer, state) {
   renderer.rect(0, 0, W, H, COLORS.bg);
 
@@ -18,51 +14,48 @@ export function renderTitleScreen(renderer, state) {
     size: 72, color: COLORS.text, weight: 'bold', font: 'monospace',
   });
 
-  // Subtitle
   renderer.centeredText('A Roguelike Piano Teacher', H / 2 + 20, {
     size: 18, color: COLORS.textDim,
   });
 
-  // Instructions
-  renderer.centeredText('• Play notes on your piano to defeat enemies', H / 2 + 70, {
-    size: 14, color: COLORS.textDim,
-  });
-  renderer.centeredText('• Progress through dungeon floors', H / 2 + 94, {
-    size: 14, color: COLORS.textDim,
-  });
-  renderer.centeredText('• Die and start over — roguelike permadeath', H / 2 + 118, {
-    size: 14, color: COLORS.textDim,
+  // How to play
+  const lines = [
+    '⚔  Defeat enemies by playing the correct notes',
+    '🎹  Click the piano keys  or  use keyboard shortcuts  (A S D F G H J)',
+    '🎤  Or connect a real piano via USB-C mic for full experience',
+    '💀  Permadeath — master all 10 floors to win',
+  ];
+  lines.forEach((line, i) => {
+    renderer.centeredText(line, H / 2 + 72 + i * 24, { size: 14, color: COLORS.textDim });
   });
 
-  // Error
+  // Input mode badge
+  const modeLabel = state.audio?.inputMode === 'mic'
+    ? '🎤 Mic connected'
+    : '🎹 Virtual piano (no mic)';
+  const modeColor = state.audio?.inputMode === 'mic' ? COLORS.success : COLORS.accent;
+  renderer.centeredText(modeLabel, H / 2 + 175, { size: 13, color: modeColor });
+
+  // Error (soft warning, not blocking)
   if (state.micError) {
-    renderer.centeredText(`⚠ ${state.micError}`, H / 2 + 160, {
-      size: 14, color: COLORS.danger,
-    });
+    renderer.centeredText(`ℹ ${state.micError}`, H / 2 + 198, { size: 12, color: COLORS.warning });
   }
 
-  // Start button area (drawn as a box for click detection)
-  const btnW = 260, btnH = 50;
+  // Start button
+  const btnW = 280, btnH = 50;
   const btnX = W / 2 - btnW / 2;
-  const btnY = H / 2 + 190;
+  const btnY = H / 2 + 218;
   renderer.rect(btnX, btnY, btnW, btnH, COLORS.accent, 8);
-  renderer.text('Press  ENTER  or  Click  to  Start', W / 2, btnY + btnH / 2, {
-    size: 15, color: '#000', align: 'center', weight: 'bold',
+  renderer.text('▶  Start Game', W / 2, btnY + btnH / 2, {
+    size: 18, color: '#000', align: 'center', weight: 'bold',
   });
 
-  // Footer
-  renderer.centeredText('Connect your piano via USB-C mic before starting', H - 30, {
+  renderer.centeredText('Press  ENTER  or  click  to  start', H - 22, {
     size: 12, color: COLORS.textDim,
   });
 }
 
-/** Returns the start button hit region. */
 export function getStartButtonRegion() {
-  const btnW = 260, btnH = 50;
-  return {
-    x: W / 2 - btnW / 2,
-    y: GAME_CONFIG.canvas.height / 2 + 190,
-    w: btnW,
-    h: btnH,
-  };
+  const btnW = 280, btnH = 50;
+  return { x: W / 2 - btnW / 2, y: H / 2 + 218, w: btnW, h: btnH };
 }

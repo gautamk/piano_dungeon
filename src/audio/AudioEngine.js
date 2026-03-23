@@ -3,8 +3,9 @@ import { PitchDetector } from './PitchDetector.js';
 import { freqToNote, freqToCents } from './NoteMapper.js';
 
 /**
- * Manages the Web Audio API lifecycle.
- * Must be initialized inside a user gesture handler (click) due to autoplay policy.
+ * Manages Web Audio API lifecycle.
+ * Falls back to any available microphone (including MacBook built-in).
+ * Must be initialized inside a user gesture handler due to autoplay policy.
  */
 export class AudioEngine {
   constructor() {
@@ -13,15 +14,14 @@ export class AudioEngine {
     this.source = null;
     this.stream = null;
     this.detector = null;
-    this.selectedDeviceId = localStorage.getItem('pianoMicDeviceId') ?? undefined;
+    this.selectedDeviceId = localStorage.getItem('pianoMicDeviceId') ?? null;
     this.devices = [];
+    this.inputMode = 'none'; // 'mic' | 'none'
 
-    // Last stable note detected - read by game loop
-    this.currentNote = null; // { semitone, octave, name, midi, frequency, cents }
+    this.currentNote = null;
     this.rawFrequency = null;
   }
 
-  /** Enumerate audio input devices. Call after getUserMedia permission is granted. */
   async loadDevices() {
     const all = await navigator.mediaDevices.enumerateDevices();
     this.devices = all.filter(d => d.kind === 'audioinput');
@@ -29,8 +29,8 @@ export class AudioEngine {
   }
 
   /**
-   * Request mic access and start audio processing.
-   * deviceId: optional, use stored/selected device.
+   * Request mic access. Uses stored device if available, otherwise uses system default.
+   * Returns true on success, false if permission denied.
    */
   async start(deviceId) {
     if (deviceId) {
@@ -38,17 +38,26 @@ export class AudioEngine {
       localStorage.setItem('pianoMicDeviceId', deviceId);
     }
 
-    const constraints = {
-      audio: {
-        deviceId: this.selectedDeviceId ? { ideal: this.selectedDeviceId } : undefined,
-        echoCancellation: false,
-        autoGainControl: false,
-        noiseSuppression: false,
-        latency: 0,
-      },
+    // Build audio constraints - no processing so piano sounds come through clean
+    const audioConstraints = {
+      echoCancellation: false,
+      autoGainControl: false,
+      noiseSuppression: false,
     };
+    if (this.selectedDeviceId) {
+      audioConstraints.deviceId = { ideal: this.selectedDeviceId };
+    }
 
-    this.stream = await navigator.mediaDevices.getUserMedia(constraints);
+    try {
+      this.stream = await navigator.mediaDevices.getUserMedia({ audio: audioConstraints });
+    } catch {
+      // Try again with no constraints (broadest compatibility - picks system default mic)
+      try {
+        this.stream = await navigator.mediaDevices.getUserMedia({ audio: true });
+      } catch (err) {
+        return false; // mic permission denied entirely
+      }
+    }
 
     this.ctx = new AudioContext();
     if (this.ctx.state === 'suspended') await this.ctx.resume();
@@ -61,12 +70,12 @@ export class AudioEngine {
     this.source.connect(this.analyser);
 
     this.detector = new PitchDetector(this.analyser, this.ctx.sampleRate);
+    this.inputMode = 'mic';
 
-    // After permission granted, enumerate real device labels
     await this.loadDevices();
+    return true;
   }
 
-  /** Call once per animation frame. Updates currentNote. */
   tick() {
     if (!this.detector) return;
 
@@ -80,14 +89,11 @@ export class AudioEngine {
       }
       this.rawFrequency = result.frequency;
     } else if (!result.frequency) {
-      // Silence - clear current note after detector confirms silence
       this.currentNote = null;
       this.rawFrequency = null;
     }
-    // If detected but not stable yet, keep last stable note
   }
 
-  /** Stop all audio processing and release resources. */
   stop() {
     this.source?.disconnect();
     this.stream?.getTracks().forEach(t => t.stop());
@@ -98,6 +104,7 @@ export class AudioEngine {
     this.stream = null;
     this.detector = null;
     this.currentNote = null;
+    this.inputMode = 'none';
   }
 
   get isRunning() {

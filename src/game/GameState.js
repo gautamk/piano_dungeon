@@ -34,8 +34,10 @@ export function createGameState() {
 
     // Live audio data (set by AudioEngine each frame)
     audio: {
-      note: null,      // { semitone, octave, name, midi, frequency, cents }
-      rawFreq: null,   // raw detected frequency (for tuning display)
+      note: null,        // { semitone, octave, name, midi, frequency, cents } — from real mic
+      virtualNote: null, // { semitone, octave, name, midi } — from virtual piano click/keyboard
+      rawFreq: null,
+      inputMode: 'none', // 'mic' | 'none'
     },
 
     // Floating feedback messages (damage numbers, text popups)
