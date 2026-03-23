@@ -25,6 +25,27 @@ export const GAME_CONFIG = {
   },
 };
 
+// Piano strip layout — single source of truth for rendering and hit-testing.
+// startOctave / numOctaves define the visible key range (C3–B4 by default).
+export const PIANO_LAYOUT = {
+  x: 60,
+  y: GAME_CONFIG.canvas.height - 120, // 600
+  w: GAME_CONFIG.canvas.width - 120,  // 1160
+  h: 90,
+  startOctave: 3,
+  numOctaves: 2,
+};
+
+// Badge colours for each challenge type — used in BattleScreen type badge.
+// Add a new entry here when adding a new challenge type to ChallengeEngine.js.
+export const CHALLENGE_TYPE_COLORS = {
+  NOTE:     '#6366f1',
+  INTERVAL: '#8b5cf6',
+  SCALE:    '#0ea5e9',
+  CHORD:    '#f59e0b',
+  MELODY:   '#10b981',
+};
+
 export const COLORS = {
   bg: '#0a0a0f',
   bgLight: '#12121a',

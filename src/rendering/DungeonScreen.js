@@ -145,7 +145,8 @@ export function getRoomHitRegions(rooms) {
   }));
 }
 
-function floorTheme(floor) {
+// Exported for testing. The final branch covers floors 9+ (including any future expansion).
+export function floorTheme(floor) {
   if (floor <= 2) return 'The Cellar';
   if (floor <= 4) return 'The Catacombs';
   if (floor <= 6) return 'The Tower';

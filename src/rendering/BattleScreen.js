@@ -1,17 +1,11 @@
-import { COLORS, GAME_CONFIG } from '../config.js';
+import { COLORS, GAME_CONFIG, PIANO_LAYOUT, CHALLENGE_TYPE_COLORS } from '../config.js';
 import { NOTE_NAMES } from '../data/music.js';
 import { renderPianoStrip } from './PianoRenderer.js';
 
+export { PIANO_LAYOUT } from '../config.js';
+
 const W = GAME_CONFIG.canvas.width;
 const H = GAME_CONFIG.canvas.height;
-
-// Piano strip layout — exported so main.js can use the same values for hit testing
-export const PIANO_LAYOUT = {
-  x: 60,
-  y: H - 120,
-  w: W - 120,
-  h: 90,
-};
 
 /**
  * Renders the battle screen: enemy, challenge description, timer, piano strip.
@@ -136,8 +130,7 @@ function renderChallengeArea(renderer, challenge, phase, timerMs, lastResult) {
   }
 
   // Challenge type badge
-  const typeColor = { NOTE: '#6366f1', INTERVAL: '#8b5cf6', SCALE: '#0ea5e9', CHORD: '#f59e0b', MELODY: '#10b981' };
-  renderer.rect(cx - 50, areaY - 14, 100, 26, typeColor[challenge.type] || COLORS.accent, 13);
+  renderer.rect(cx - 50, areaY - 14, 100, 26, CHALLENGE_TYPE_COLORS[challenge.type] || COLORS.accent, 13);
   renderer.text(challenge.type, cx, areaY, { size: 12, color: '#fff', align: 'center', weight: 'bold' });
 
   // Main label (the challenge description)

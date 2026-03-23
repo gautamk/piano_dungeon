@@ -1,6 +1,6 @@
 import { GAME_CONFIG } from '../config.js';
 import { PitchDetector } from './PitchDetector.js';
-import { freqToNote, freqToCents } from './NoteMapper.js';
+import { midiToNote, freqToCents } from './NoteMapper.js';
 
 /**
  * Manages Web Audio API lifecycle.
@@ -87,11 +87,10 @@ export class AudioEngine {
     const result = this.detector.detect();
 
     if (result.stable && result.frequency) {
-      const note = freqToNote(result.frequency);
-      if (note) {
-        const cents = freqToCents(result.frequency, note.midi);
-        this.currentNote = { ...note, frequency: result.frequency, cents };
-      }
+      // PitchDetector already computed result.midi — reuse it to avoid a second Math.log2 call
+      const note = midiToNote(result.midi);
+      const cents = freqToCents(result.frequency, result.midi);
+      this.currentNote = { ...note, frequency: result.frequency, cents };
       this.rawFrequency = result.frequency;
     } else if (!result.frequency) {
       this.currentNote = null;

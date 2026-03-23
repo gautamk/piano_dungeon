@@ -1,5 +1,6 @@
 import { describe, it, expect } from 'vitest';
-import { generateFloor, ROOM_TYPE } from '../game/DungeonGenerator.js';
+import { generateFloor, unlockNextRoom, ROOM_TYPE } from '../game/DungeonGenerator.js';
+import { floorTheme } from '../rendering/DungeonScreen.js';
 import { GAME_CONFIG } from '../config.js';
 
 describe('generateFloor', () => {
@@ -64,5 +65,80 @@ describe('generateFloor', () => {
     const boss1 = floor1.find(r => r.type === ROOM_TYPE.BOSS);
     const boss5 = floor5.find(r => r.type === ROOM_TYPE.BOSS);
     expect(boss5.enemy.currentHp).toBeGreaterThan(boss1.enemy.currentHp);
+  });
+
+  it('first room is always COMBAT type', () => {
+    for (const seed of [1, 42, 999, 12345]) {
+      const rooms = generateFloor(1, seed);
+      expect(rooms[0].type).toBe(ROOM_TYPE.COMBAT);
+    }
+  });
+
+  it('all room types are valid ROOM_TYPE values', () => {
+    const valid = new Set(Object.values(ROOM_TYPE));
+    const rooms = generateFloor(3, 9999);
+    for (const room of rooms) {
+      expect(valid.has(room.type)).toBe(true);
+    }
+  });
+
+  it('non-combat rooms (SHOP, REST, PRACTICE) have no enemy', () => {
+    // Generate many seeds to catch non-combat rooms
+    for (const seed of [1, 2, 3, 4, 5, 6, 7, 8, 9, 10]) {
+      const rooms = generateFloor(3, seed);
+      for (const room of rooms) {
+        if ([ROOM_TYPE.SHOP, ROOM_TYPE.REST, ROOM_TYPE.PRACTICE].includes(room.type)) {
+          expect(room.enemy).toBeNull();
+        }
+      }
+    }
+  });
+});
+
+describe('unlockNextRoom', () => {
+  it('sets reachable=true on the room after the cleared index', () => {
+    const rooms = generateFloor(1, 42);
+    unlockNextRoom(rooms, 0);
+    expect(rooms[1].reachable).toBe(true);
+  });
+
+  it('is a no-op when clearedIndex is the last room (no out-of-bounds error)', () => {
+    const rooms = generateFloor(1, 42);
+    const lastIndex = rooms.length - 1;
+    expect(() => unlockNextRoom(rooms, lastIndex)).not.toThrow();
+    // No room beyond the last — nothing changes
+  });
+
+  it('does not affect rooms before or further ahead than next', () => {
+    const rooms = generateFloor(1, 42);
+    // Mark rooms[0] cleared, unlock next
+    unlockNextRoom(rooms, 0);
+    // Room at index 2 should still be unreachable
+    expect(rooms[2].reachable).toBe(false);
+  });
+});
+
+describe('floorTheme', () => {
+  it('returns a string for every floor 1–10', () => {
+    for (let floor = 1; floor <= 10; floor++) {
+      expect(typeof floorTheme(floor)).toBe('string');
+      expect(floorTheme(floor).length).toBeGreaterThan(0);
+    }
+  });
+
+  it('does not return undefined for floors beyond 10 (catch-all branch)', () => {
+    expect(floorTheme(11)).toBeDefined();
+    expect(floorTheme(50)).toBeDefined();
+    expect(typeof floorTheme(11)).toBe('string');
+  });
+
+  it('maps floors to correct theme names', () => {
+    expect(floorTheme(1)).toBe('The Cellar');
+    expect(floorTheme(2)).toBe('The Cellar');
+    expect(floorTheme(3)).toBe('The Catacombs');
+    expect(floorTheme(5)).toBe('The Tower');
+    expect(floorTheme(7)).toBe('The Sanctum');
+    expect(floorTheme(9)).toBe('The Final Chamber');
+    expect(floorTheme(10)).toBe('The Final Chamber');
   });
 });

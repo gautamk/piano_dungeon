@@ -6,7 +6,7 @@ import { Renderer } from './rendering/Renderer.js';
 import { renderTitleScreen, getStartButtonRegion } from './rendering/TitleScreen.js';
 import { renderDungeonScreen, getRoomHitRegions } from './rendering/DungeonScreen.js';
 import { renderBattleScreen, PIANO_LAYOUT } from './rendering/BattleScreen.js';
-import { getPianoKeyRegions, PIANO_START_OCTAVE, PIANO_NUM_OCTAVES } from './rendering/PianoRenderer.js';
+import { getPianoKeyRegions } from './rendering/PianoRenderer.js';
 import {
   renderRoomClearScreen,
   renderFloorClearScreen,

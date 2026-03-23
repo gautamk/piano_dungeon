@@ -1,11 +1,15 @@
-import { COLORS } from '../config.js';
+import { COLORS, PIANO_LAYOUT } from '../config.js';
 import { NOTE_NAMES } from '../data/music.js';
 
 const BLACK_KEYS = new Set([1, 3, 6, 8, 10]);
 const WHITE_SEMITONES = [0, 2, 4, 5, 7, 9, 11]; // C D E F G A B
 
-export const PIANO_START_OCTAVE = 3;
-export const PIANO_NUM_OCTAVES = 2;
+// Re-exported for backward compatibility — prefer PIANO_LAYOUT.startOctave / numOctaves
+export const PIANO_START_OCTAVE = PIANO_LAYOUT.startOctave;
+export const PIANO_NUM_OCTAVES = PIANO_LAYOUT.numOctaves;
+
+// Reused Set to avoid per-frame allocation in getHighlightSemitones
+const _highlightSet = new Set();
 
 /**
  * Compute piano key layout without drawing.
@@ -147,17 +151,17 @@ export function renderPianoStrip(renderer, { audioNote, virtualNote, challenge, 
 }
 
 function getHighlightSemitones(challenge) {
-  const set = new Set();
-  if (!challenge) return set;
+  _highlightSet.clear();
+  if (!challenge) return _highlightSet;
   if (challenge.type === 'NOTE') {
-    set.add(challenge.sequence[0]);
+    _highlightSet.add(challenge.sequence[0]);
   } else if (challenge.type === 'INTERVAL' || challenge.type === 'SCALE') {
     const next = challenge.sequence[challenge.progress];
-    if (next !== undefined) set.add(next);
+    if (next !== undefined) _highlightSet.add(next);
   } else if (challenge.type === 'CHORD') {
     for (const s of challenge.required) {
-      if (!challenge.played?.has(s)) set.add(s);
+      if (!challenge.played?.has(s)) _highlightSet.add(s);
     }
   }
-  return set;
+  return _highlightSet;
 }

@@ -211,9 +211,7 @@ export class StateMachine {
       battle.consecutiveWrong = 0;
       const comboText = s.player.combo >= 5 ? ' COMBO x2!' : s.player.combo >= 3 ? ' COMBO x1.5!' : '';
       spawnFeedback(s, `PERFECT! -${dmg}${comboText}`, cx, cy - 60, COLORS.success);
-      battle.lastResult = 'SUCCESS';
-      battle.phase = 'RESULT';
-      battle.resultTimer = RESULT_SHOW_MS;
+      this._endChallenge(battle, 'SUCCESS');
       return;
     }
 
@@ -240,10 +238,15 @@ export class StateMachine {
       damagePlayer(s, dmg);
       battle.consecutiveWrong++;
       spawnFeedback(s, `WRONG! -${dmg} HP`, cx, cy - 60, COLORS.danger);
-      battle.lastResult = 'FAIL';
-      battle.phase = 'RESULT';
-      battle.resultTimer = RESULT_SHOW_MS;
+      this._endChallenge(battle, 'FAIL');
     }
+  }
+
+  /** Set battle into RESULT phase with the given outcome. */
+  _endChallenge(battle, result) {
+    battle.lastResult = result;
+    battle.phase = 'RESULT';
+    battle.resultTimer = RESULT_SHOW_MS;
   }
 
   _onChallengeTimeout() {
@@ -258,9 +261,7 @@ export class StateMachine {
     const dmg = s.battle.enemy.attackPower;
     damagePlayer(s, dmg);
     spawnFeedback(s, `TIME! -${dmg} HP`, 640, 300, COLORS.danger);
-    s.battle.lastResult = 'FAIL';
-    s.battle.phase = 'RESULT';
-    s.battle.resultTimer = RESULT_SHOW_MS;
+    this._endChallenge(s.battle, 'FAIL');
   }
 
   _clearRoom() {
