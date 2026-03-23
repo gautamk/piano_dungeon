@@ -1,0 +1,7 @@
+{
+  "database": "dolt",
+  "backend": "dolt",
+  "dolt_mode": "server",
+  "dolt_database": "piano_trainer",
+  "project_id": "3827f280-88ed-4cf8-a3e2-3d91e07104d9"
+}
