@@ -21,8 +21,14 @@ export class StateMachine {
     this.synth = audioSynth ?? null;
     this.state = createGameState();
 
-    // One-shot virtual note (set by triggerVirtualNote, consumed in tick)
-    this._virtualNote = null;
+    // FIFO queue of virtual notes (set by triggerVirtualNote, drained one-per-tick)
+    // Using a queue instead of a single slot prevents fast keypresses from overwriting
+    // each other before _tickBattle can consume them.
+    this._virtualNoteQueue = [];
+
+    // After a virtual note is consumed, suppress mic evaluation for this many ms.
+    // Prevents speaker bleed / harmonics from auto-advancing multi-note challenges.
+    this._micEvalCooldownMs = 0;
 
     // Prevent double-triggering the same MIDI within one challenge phase
     this._lastActedMidi = null;
@@ -37,9 +43,11 @@ export class StateMachine {
   triggerVirtualNote(semitone, octave) {
     const name = NOTE_NAMES[semitone];
     const midi = (octave + 1) * 12 + semitone;
-    this._virtualNote = { semitone, octave, name, midi, frequency: null, cents: 0, virtual: true };
+    const vNote = { semitone, octave, name, midi, frequency: null, cents: 0, virtual: true };
+    // Cap queue at 4 to avoid unbounded growth from button-mashing
+    if (this._virtualNoteQueue.length < 4) this._virtualNoteQueue.push(vNote);
     // Update display note immediately so the piano strip lights up
-    this.state.audio.virtualNote = this._virtualNote;
+    this.state.audio.virtualNote = vNote;
     // Play the note through speakers
     this.synth?.playNote(semitone, octave);
   }
@@ -51,15 +59,6 @@ export class StateMachine {
     this.state.audio.note = this.audio.currentNote;
     this.state.audio.rawFreq = this.audio.rawFrequency;
     this.state.audio.inputMode = this.audio.inputMode;
-
-    // Virtual note persists in display for 300ms, then clears
-    if (this._virtualNote) {
-      this._virtualNote._ttl = (this._virtualNote._ttl ?? 300) - deltaMs;
-      if (this._virtualNote._ttl <= 0) {
-        this._virtualNote = null;
-        this.state.audio.virtualNote = null;
-      }
-    }
 
     tickFeedback(this.state, deltaMs);
     this._tickScreen(deltaMs);
@@ -160,17 +159,30 @@ export class StateMachine {
 
     if (battle.phase !== 'WAITING') return;
 
+    // Tick down the post-virtual mic suppression window
+    if (this._micEvalCooldownMs > 0) this._micEvalCooldownMs -= deltaMs;
+
     battle.timerMs -= deltaMs;
 
-    // Virtual key presses (click/keyboard) are explicit user intent — always evaluate.
-    // Mic notes are gated by _lastActedMidi to prevent the same ringing note from
-    // re-triggering evaluation while the speaker sustain bleeds into the mic.
-    const isVirtual = !!this._virtualNote;
-    const note = this._virtualNote ?? s.audio.note;
+    // Drain one virtual note from the queue per tick (explicit user intent — always evaluate).
+    // Mic notes are evaluated only when: (a) no virtual note is pending, (b) the mic cooldown
+    // has elapsed (prevents speaker bleed / harmonics from auto-advancing multi-note challenges),
+    // and (c) the MIDI differs from the last acted note (prevents sustain re-triggering).
+    const vNote = this._virtualNoteQueue.shift() ?? null;
+    const isVirtual = !!vNote;
+
+    // Clear the display once the queue is fully drained (Bug 2 fix)
+    if (!isVirtual && this._virtualNoteQueue.length === 0) {
+      this.state.audio.virtualNote = null;
+    }
+
+    const note = vNote ?? (this._micEvalCooldownMs > 0 ? null : s.audio.note);
+
     if (note && (isVirtual || note.midi !== this._lastActedMidi)) {
       this._lastActedMidi = note.midi;
       if (isVirtual) {
-        this._virtualNote = null;
+        // Start cooldown so mic input can't race the next sequence position (Bug 1 fix)
+        this._micEvalCooldownMs = 300;
       }
       this._evaluateChallengeNote(note);
       return;
