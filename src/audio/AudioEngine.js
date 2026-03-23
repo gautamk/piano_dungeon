@@ -48,14 +48,19 @@ export class AudioEngine {
       audioConstraints.deviceId = { ideal: this.selectedDeviceId };
     }
 
+    // Race mic request against a 3s timeout so a stuck permission dialog never blocks the game
+    const withTimeout = (promise) => Promise.race([
+      promise,
+      new Promise((_, reject) => setTimeout(() => reject(new Error('timeout')), 3000)),
+    ]);
+
     try {
-      this.stream = await navigator.mediaDevices.getUserMedia({ audio: audioConstraints });
+      this.stream = await withTimeout(navigator.mediaDevices.getUserMedia({ audio: audioConstraints }));
     } catch {
-      // Try again with no constraints (broadest compatibility - picks system default mic)
       try {
-        this.stream = await navigator.mediaDevices.getUserMedia({ audio: true });
-      } catch (err) {
-        return false; // mic permission denied entirely
+        this.stream = await withTimeout(navigator.mediaDevices.getUserMedia({ audio: true }));
+      } catch {
+        return false;
       }
     }
 

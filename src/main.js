@@ -235,3 +235,6 @@ function loop(now) {
 }
 
 requestAnimationFrame((now) => { lastTime = now; requestAnimationFrame(loop); });
+
+// Debug hook — exposes game internals for preview/testing
+window.__game = { sm, audio, startGame: () => sm.onStartGame() };
