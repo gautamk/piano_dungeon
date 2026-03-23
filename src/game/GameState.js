@@ -30,6 +30,14 @@ export function createGameState() {
       resultTimer: 0,       // ms remaining to show result feedback
       timerMs: 0,           // ms remaining for current challenge
       consecutiveWrong: 0,
+      isPractice: false,          // true when in a practice room (no HP loss)
+      melodyChallengePhrase: 0,   // index of the next melody phrase to generate
+    },
+
+    // Song practice state (populated when entering PRACTICE screen)
+    practice: {
+      songs: [],          // SONGS_LIST — set by StateMachine on entering PRACTICE screen
+      selectedSong: null, // not currently used; song selection triggers onSelectPracticeSong()
     },
 
     // Live audio data (set by AudioEngine each frame)

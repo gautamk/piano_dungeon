@@ -19,11 +19,12 @@ function pick(rng, arr) {
 
 /**
  * Room types:
- *   COMBAT  - fight an enemy with a musical challenge
- *   ELITE   - harder enemy, better score reward
- *   SHOP    - spend score to gain max HP (score acting as currency)
- *   REST    - heal 2 HP
- *   BOSS    - floor boss, multi-step challenge
+ *   COMBAT   - fight an enemy with a musical challenge
+ *   ELITE    - harder enemy, better score reward
+ *   SHOP     - spend score to gain max HP (score acting as currency)
+ *   REST     - heal 2 HP
+ *   BOSS     - floor boss, multi-step challenge
+ *   PRACTICE - song practice room — choose a song to play through, no HP loss
  */
 export const ROOM_TYPE = {
   COMBAT: 'COMBAT',
@@ -31,6 +32,7 @@ export const ROOM_TYPE = {
   SHOP: 'SHOP',
   REST: 'REST',
   BOSS: 'BOSS',
+  PRACTICE: 'PRACTICE',
 };
 
 export function createRoom(type, index, enemy = null) {
@@ -72,14 +74,16 @@ export function generateFloor(floor, runSeed) {
     if (i === 0) {
       // First room is always a plain combat encounter
       type = ROOM_TYPE.COMBAT;
-    } else if (roll < 0.55) {
+    } else if (roll < 0.50) {
       type = ROOM_TYPE.COMBAT;
-    } else if (roll < 0.70 && elites.length > 0) {
+    } else if (roll < 0.65 && elites.length > 0) {
       type = ROOM_TYPE.ELITE;
-    } else if (roll < 0.80) {
+    } else if (roll < 0.75) {
       type = ROOM_TYPE.SHOP;
-    } else {
+    } else if (roll < 0.88) {
       type = ROOM_TYPE.REST;
+    } else {
+      type = ROOM_TYPE.PRACTICE;
     }
 
     if (type === ROOM_TYPE.COMBAT) {

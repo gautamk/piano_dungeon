@@ -34,6 +34,11 @@ export function renderBattleScreen(renderer, state) {
   // ── Challenge area (center)
   renderChallengeArea(renderer, challenge, phase, timerMs, lastResult);
 
+  // ── Melody roll strip (between challenge area and piano, only for MELODY challenges)
+  if (challenge?.type === 'MELODY') {
+    renderMelodyRoll(renderer, challenge);
+  }
+
   // ── Piano strip (bottom)
   renderPianoStrip(renderer, {
     audioNote: audio.note,
@@ -131,7 +136,7 @@ function renderChallengeArea(renderer, challenge, phase, timerMs, lastResult) {
   }
 
   // Challenge type badge
-  const typeColor = { NOTE: '#6366f1', INTERVAL: '#8b5cf6', SCALE: '#0ea5e9', CHORD: '#f59e0b' };
+  const typeColor = { NOTE: '#6366f1', INTERVAL: '#8b5cf6', SCALE: '#0ea5e9', CHORD: '#f59e0b', MELODY: '#10b981' };
   renderer.rect(cx - 50, areaY - 14, 100, 26, typeColor[challenge.type] || COLORS.accent, 13);
   renderer.text(challenge.type, cx, areaY, { size: 12, color: '#fff', align: 'center', weight: 'bold' });
 
@@ -171,6 +176,54 @@ function renderChallengeArea(renderer, challenge, phase, timerMs, lastResult) {
     const [txt, col] = resultTexts[lastResult] || ['', COLORS.text];
     renderer.text(txt, cx, areaY + 185, { size: 26, color: col, align: 'center', weight: 'bold' });
   }
+}
+
+/**
+ * Horizontal piano-roll strip showing all notes in a MELODY challenge.
+ * Sits in the gap between the challenge area and the piano keyboard strip.
+ * Completed notes are dimmed, current target glows amber, upcoming notes are muted.
+ */
+function renderMelodyRoll(renderer, challenge) {
+  const { sequence, octaves, progress } = challenge;
+  if (!sequence || sequence.length === 0) return;
+
+  const rollX = 60, rollY = 544, rollW = W - 120, rollH = 48;
+  const padding = 8;
+  const maxVisible = Math.min(sequence.length, 16);
+  const blockW = Math.min(90, (rollW - 2 * padding - (maxVisible - 1) * 4) / maxVisible);
+  const blockH = rollH - 14;
+  const blockY = rollY + 7;
+
+  renderer.rect(rollX, rollY, rollW, rollH, COLORS.bgLight, 6);
+  renderer.rectStroke(rollX, rollY, rollW, rollH, COLORS.border, 1, 6);
+
+  // Show a window of notes centered near current progress
+  const startNote = Math.max(0, Math.min(progress - 2, sequence.length - maxVisible));
+  const endNote = Math.min(sequence.length, startNote + maxVisible);
+
+  let bx = rollX + padding;
+  for (let i = startNote; i < endNote; i++) {
+    const isDone = i < progress;
+    const isCurrent = i === progress;
+    const noteName = NOTE_NAMES[sequence[i]] + (octaves?.[i] ?? '');
+
+    const fillColor = isCurrent ? COLORS.accent : isDone ? COLORS.bgLight : COLORS.surface;
+    const strokeColor = isCurrent ? COLORS.accent : isDone ? COLORS.success : COLORS.border;
+    const textColor = isCurrent ? '#000' : isDone ? COLORS.textDim : COLORS.text;
+
+    renderer.rect(bx, blockY, blockW, blockH, fillColor, 4);
+    renderer.rectStroke(bx, blockY, blockW, blockH, strokeColor, isCurrent ? 2 : 1, 4);
+    renderer.text(noteName, bx + blockW / 2, blockY + blockH / 2, {
+      size: 12, color: textColor, align: 'center', weight: isCurrent ? 'bold' : 'normal',
+    });
+
+    bx += blockW + 4;
+  }
+
+  // Progress counter in bottom-right
+  renderer.text(`${progress}/${sequence.length}`, rollX + rollW - padding, rollY + rollH - 6, {
+    size: 10, color: COLORS.textDim, align: 'right',
+  });
 }
 
 function renderSequenceProgress(renderer, challenge, cx, y) {

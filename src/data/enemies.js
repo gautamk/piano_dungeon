@@ -145,7 +145,8 @@ export const BOSSES = [
     maxHp: 300,
     attackPower: 30,
     lore: 'Ancient conductor of the void. To defeat him is to master music itself.',
-    challengeWeights: { NOTE: 2, INTERVAL: 2, SCALE: 3, CHORD: 3 },
+    challengeWeights: { NOTE: 1, INTERVAL: 1, SCALE: 2, CHORD: 2, MELODY: 4 },
+    song: 'furElise', // The Maestro's signature phrase
   },
 ];
 

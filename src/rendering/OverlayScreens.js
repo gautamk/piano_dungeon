@@ -137,6 +137,50 @@ export function renderVictoryScreen(renderer, state) {
   });
 }
 
+/** Practice room — song selection screen. */
+export function renderPracticeScreen(renderer, state) {
+  const songs = state.practice?.songs ?? [];
+  renderer.rect(0, 0, W, H, COLORS.bg);
+
+  renderer.centeredText('PRACTICE ROOM', 58, { size: 32, color: COLORS.accent, weight: 'bold' });
+  renderer.centeredText('Choose a song to learn', 96, { size: 14, color: COLORS.textDim });
+
+  if (songs.length === 0) {
+    renderer.centeredText('No songs available', H / 2, { size: 18, color: COLORS.textDim });
+  } else {
+    const startY = 140;
+    const rowH = 76;
+    songs.forEach((song, i) => {
+      const y = startY + i * rowH;
+      const rx = W / 2 - 300;
+      renderer.rect(rx, y, 600, rowH - 10, COLORS.surface, 8);
+      renderer.rectStroke(rx, y, 600, rowH - 10, COLORS.border, 1, 8);
+      renderer.text(song.title, W / 2, y + 22, {
+        size: 20, color: COLORS.text, align: 'center', weight: 'bold',
+      });
+      const meta = `by ${song.composer}  •  ${song.phrases.length} phrases  •  Difficulty ${song.difficulty}`;
+      renderer.text(meta, W / 2, y + 48, {
+        size: 12, color: COLORS.textDim, align: 'center',
+      });
+    });
+  }
+
+  renderer.centeredText('Press ESC to leave', H - 36, { size: 13, color: COLORS.textDim });
+}
+
+/** Hit regions for song selection buttons in the PRACTICE screen. */
+export function getPracticeHitRegions(songs) {
+  const startY = 140;
+  const rowH = 76;
+  return songs.map((song, i) => ({
+    x: W / 2 - 300,
+    y: startY + i * rowH,
+    w: 600,
+    h: rowH - 10,
+    songId: song.id,
+  }));
+}
+
 function renderHpRow(renderer, player, y) {
   renderer.hpHearts(player, W / 2, y, 22);
 }

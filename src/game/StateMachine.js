@@ -3,11 +3,14 @@ import { createGameState, damagePlayer, healPlayer, scoreHit, spawnFeedback, tic
 import { generateFloor, unlockNextRoom, ROOM_TYPE } from './DungeonGenerator.js';
 import {
   generateChallenge,
+  generateMelodyChallenge,
   pickChallengeType,
   evaluateNote,
   computeEnemyDamage,
+  CHALLENGE_TYPE,
 } from './ChallengeEngine.js';
 import { NOTE_NAMES } from '../data/music.js';
+import { SONGS, SONGS_LIST } from '../data/songs.js';
 import { COLORS } from '../config.js';
 
 const RESULT_SHOW_MS = 900;
@@ -78,6 +81,9 @@ export class StateMachine {
       }
     }
     if (screen === 'BATTLE') this._startBattle();
+    if (screen === 'PRACTICE') {
+      s.practice.songs = SONGS_LIST;
+    }
     if (screen === 'TITLE') {
       this.state = createGameState();
       this.state.micDevices = this.audio.devices;
@@ -103,19 +109,35 @@ export class StateMachine {
     s.battle.lastResult = null;
     s.battle.resultTimer = 0;
     s.battle.consecutiveWrong = 0;
+    // melodyChallengePhrase is reset by onSelectPracticeSong; for bosses it cycles freely
+    if (!s.battle.isPractice) s.battle.melodyChallengePhrase = 0;
     this._newChallenge();
   }
 
   _newChallenge() {
     const s = this.state;
     const type = pickChallengeType(s.battle.enemy, s.player.floor);
-    s.battle.challenge = generateChallenge(type, s.player.floor);
+
+    if (type === CHALLENGE_TYPE.MELODY) {
+      const song = SONGS[s.battle.enemy.song];
+      if (song) {
+        const phrase = s.battle.melodyChallengePhrase;
+        s.battle.melodyChallengePhrase = (phrase + 1) % song.phrases.length;
+        s.battle.challenge = generateMelodyChallenge(song, phrase);
+      } else {
+        s.battle.challenge = generateChallenge(CHALLENGE_TYPE.NOTE, s.player.floor);
+      }
+    } else {
+      s.battle.challenge = generateChallenge(type, s.player.floor);
+    }
+
     s.battle.timerMs = s.battle.challenge.timeMs;
     s.battle.phase = 'WAITING';
     s.battle.lastResult = null;
-    this._lastActedMidi = null;
-    // Play target note(s) as a teaching prompt
-    this.synth?.previewChallenge(s.battle.challenge);
+    // Do NOT reset _lastActedMidi here — the previous note may still be ringing
+    // through speakers into the mic. Keeping the last midi prevents it from
+    // instantly triggering the new challenge. Virtual keypresses bypass this
+    // guard regardless.
   }
 
   _tickBattle(deltaMs) {
@@ -140,15 +162,15 @@ export class StateMachine {
 
     battle.timerMs -= deltaMs;
 
-    // Prefer virtual note (keyboard/click) over real mic for evaluation
-    // but real mic note takes display priority in the piano strip
+    // Virtual key presses (click/keyboard) are explicit user intent — always evaluate.
+    // Mic notes are gated by _lastActedMidi to prevent the same ringing note from
+    // re-triggering evaluation while the speaker sustain bleeds into the mic.
+    const isVirtual = !!this._virtualNote;
     const note = this._virtualNote ?? s.audio.note;
-    if (note && note.midi !== this._lastActedMidi) {
+    if (note && (isVirtual || note.midi !== this._lastActedMidi)) {
       this._lastActedMidi = note.midi;
-      // Consume virtual note immediately
-      if (this._virtualNote) {
+      if (isVirtual) {
         this._virtualNote = null;
-        // Keep display note visible for a moment
       }
       this._evaluateChallengeNote(note);
       return;
@@ -167,7 +189,6 @@ export class StateMachine {
 
     if (result === 'PROGRESS') {
       spawnFeedback(s, `✓ ${note.name}`, cx, cy - 80, COLORS.success);
-      this._lastActedMidi = null; // allow next note in sequence
       return;
     }
 
@@ -185,15 +206,24 @@ export class StateMachine {
     }
 
     if (result === 'NEAR_MISS') {
+      if (battle.enemy.isPractice) {
+        spawnFeedback(s, 'Close! Try again.', cx, cy - 60, COLORS.warning);
+        return; // no damage in practice
+      }
       const dmg = GAME_CONFIG.battle.nearMissDamageToPlayer;
       damagePlayer(s, dmg);
       spawnFeedback(s, `Close! -${dmg} HP`, cx, cy - 60, COLORS.warning);
       battle.lastResult = 'NEAR_MISS';
-      this._lastActedMidi = null; // allow retry
       return;
     }
 
     if (result === 'FAIL') {
+      if (battle.enemy.isPractice) {
+        // Reset timer and let them try again — evaluateNote already reset challenge.progress
+        battle.timerMs = battle.challenge.timeMs;
+        spawnFeedback(s, 'Wrong note — try again!', cx, cy - 60, COLORS.warning);
+        return; // stay in WAITING phase, no HP loss
+      }
       const dmg = battle.enemy.attackPower;
       damagePlayer(s, dmg);
       battle.consecutiveWrong++;
@@ -206,6 +236,13 @@ export class StateMachine {
 
   _onChallengeTimeout() {
     const s = this.state;
+    if (s.battle.enemy?.isPractice) {
+      // Reset challenge and try again — no HP damage
+      if (s.battle.challenge) s.battle.challenge.progress = 0;
+      s.battle.timerMs = s.battle.challenge?.timeMs ?? 10000;
+      spawnFeedback(s, "Time's up — try again!", 640, 300, COLORS.warning);
+      return;
+    }
     const dmg = s.battle.enemy.attackPower;
     damagePlayer(s, dmg);
     spawnFeedback(s, `TIME! -${dmg} HP`, 640, 300, COLORS.danger);
@@ -260,10 +297,50 @@ export class StateMachine {
       this.go('SHOP');
       return;
     }
+    if (room.type === ROOM_TYPE.PRACTICE) {
+      this.state.battle.isPractice = true;
+      this.go('PRACTICE');
+      return;
+    }
+    this.state.battle.isPractice = false;
     this.go('BATTLE');
   }
 
-  onContinueAfterRoomClear() { this.go('DUNGEON_MAP'); }
+  /**
+   * Called when the player selects a song in the PRACTICE screen.
+   * Creates a synthetic practice "enemy" and starts a BATTLE for that song.
+   */
+  onSelectPracticeSong(songId) {
+    const song = SONGS[songId];
+    if (!song) return;
+
+    const room = this.state.dungeon.rooms[this.state.dungeon.currentIndex];
+    if (!room) return;
+
+    room.enemy = {
+      name: song.title,
+      emoji: '🎵',
+      lore: `Practice • by ${song.composer} • ${song.phrases.length} phrases`,
+      currentHp: song.phrases.length,
+      maxHp: song.phrases.length,
+      attackPower: 0,
+      challengeWeights: { NOTE: 0, INTERVAL: 0, SCALE: 0, CHORD: 0, MELODY: 10 },
+      isPractice: true,
+      song: song.id,
+    };
+
+    this.state.battle.melodyChallengePhrase = 0;
+    this.go('BATTLE');
+  }
+
+  onContinueAfterRoomClear() {
+    this.state.battle.isPractice = false;
+    this.go('DUNGEON_MAP');
+  }
+  onLeavePractice() {
+    this.state.battle.isPractice = false;
+    this.go('DUNGEON_MAP');
+  }
   onNextFloor() {
     const s = this.state;
     s.player.floor++;

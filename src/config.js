@@ -43,6 +43,7 @@ export const COLORS = {
     SHOP: '#1e3a5f',
     REST: '#14532d',
     BOSS: '#78350f',
+    PRACTICE: '#1a3a2a',
     CLEARED: '#1e1e2e',
     LOCKED: '#0f0f1a',
   },

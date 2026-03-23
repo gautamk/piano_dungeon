@@ -7,6 +7,7 @@ export const CHALLENGE_TYPE = {
   INTERVAL: 'INTERVAL',
   SCALE: 'SCALE',
   CHORD: 'CHORD',
+  MELODY: 'MELODY',
 };
 
 // Seeded random pick (simple version for challenge gen)
@@ -91,6 +92,30 @@ export function generateChallenge(type, floor) {
 }
 
 /**
+ * Build a MELODY challenge from a specific song phrase.
+ * Called by StateMachine when enemy.song is set or practice mode is active.
+ */
+export function generateMelodyChallenge(song, phraseIndex) {
+  const phrase = song.phrases[phraseIndex % song.phrases.length];
+  const sequence = phrase.map(n => n.semitone);
+  const octaves = phrase.map(n => n.octave);
+  const noteNames = phrase.map(n => NOTE_NAMES[n.semitone] + n.octave);
+  const totalMs = phrase.reduce((acc, n) => acc + n.durationMs, 0);
+
+  return {
+    type: CHALLENGE_TYPE.MELODY,
+    song,
+    phraseIndex,
+    label: song.title,
+    hint: noteNames.join('  '),
+    sequence,
+    octaves,
+    progress: 0,
+    timeMs: Math.max(totalMs * 2.5, 8000),
+  };
+}
+
+/**
  * Pick a challenge type based on enemy's weight table and floor.
  */
 export function pickChallengeType(enemy, floor) {
@@ -100,6 +125,8 @@ export function pickChallengeType(enemy, floor) {
   if (getAvailableIntervals(floor).length === 0) weights.INTERVAL = 0;
   if (floor < 5) weights.SCALE = 0;
   if (floor < 6) weights.CHORD = 0;
+  // MELODY requires the enemy to have a song assigned
+  if (!enemy.song) weights.MELODY = 0;
 
   const total = Object.values(weights).reduce((a, b) => a + b, 0);
   if (total === 0) return CHALLENGE_TYPE.NOTE;
@@ -132,6 +159,17 @@ export function evaluateNote(challenge, detectedNote) {
       12 - Math.abs(semitone - target)
     );
     if (diff === 1) return 'NEAR_MISS';
+    return 'FAIL';
+  }
+
+  if (challenge.type === CHALLENGE_TYPE.MELODY) {
+    const target = challenge.sequence[challenge.progress];
+    if (semitoneMatches(semitone, target)) {
+      challenge.progress++;
+      if (challenge.progress >= challenge.sequence.length) return 'SUCCESS';
+      return 'PROGRESS';
+    }
+    challenge.progress = 0;
     return 'FAIL';
   }
 

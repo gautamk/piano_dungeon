@@ -10,6 +10,7 @@ const ROOM_ICONS = {
   [ROOM_TYPE.SHOP]: '$',
   [ROOM_TYPE.REST]: '+',
   [ROOM_TYPE.BOSS]: '☠',
+  [ROOM_TYPE.PRACTICE]: '♪',
 };
 
 const ROOM_LABELS = {
@@ -18,6 +19,7 @@ const ROOM_LABELS = {
   [ROOM_TYPE.SHOP]: 'Shop',
   [ROOM_TYPE.REST]: 'Rest',
   [ROOM_TYPE.BOSS]: 'BOSS',
+  [ROOM_TYPE.PRACTICE]: 'Practice',
 };
 
 /**

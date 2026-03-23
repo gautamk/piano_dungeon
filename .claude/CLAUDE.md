@@ -70,6 +70,10 @@ src/
 - New floor theme: add to `DungeonScreen.js` `floorTheme()` function
 - New music theory content: add to `src/data/music.js`
 
+### Runtime
+- Project uses **Bun** (not Node.js) — use `bun` for all scripts and package management
+- `bun test` runs vitest; `bun scripts/midi-to-songs.js` runs the MIDI converter
+
 ### Git
 - Commit working game states only — the game loop must run without errors
 - Never commit with `console.error` left in hot paths (game loop is fine for debug temporarily)

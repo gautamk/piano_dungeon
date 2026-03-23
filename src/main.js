@@ -12,9 +12,11 @@ import {
   renderShopScreen,
   renderGameOverScreen,
   renderVictoryScreen,
+  renderPracticeScreen,
   getShopHitRegions,
   getRestartButtonRegion,
   getFloorClearButtonRegion,
+  getPracticeHitRegions,
 } from './rendering/OverlayScreens.js';
 
 // ─── Init ─────────────────────────────────────────────────────────────────────
@@ -127,7 +129,7 @@ canvas.addEventListener('click', async (e) => {
   if (screen === 'BATTLE' || screen === 'ROOM_CLEAR') {
     // Check if click is on the piano strip (only act in BATTLE phase)
     if (screen === 'BATTLE' && hitTest(pos, PIANO_LAYOUT)) {
-      const regions = getPianoKeyRegions(PIANO_X, PIANO_Y, PIANO_W, PIANO_H);
+      const regions = getPianoKeyRegions(PIANO_LAYOUT.x, PIANO_LAYOUT.y, PIANO_LAYOUT.w, PIANO_LAYOUT.h);
       // Test black keys first (on top), then white keys
       for (const key of regions) {
         if (hitTest(pos, key)) {
@@ -156,6 +158,17 @@ canvas.addEventListener('click', async (e) => {
     if (hitTest(pos, getRestartButtonRegion())) sm.onRestartGame();
     return;
   }
+
+  if (screen === 'PRACTICE') {
+    const songs = sm.state.practice?.songs ?? [];
+    for (const r of getPracticeHitRegions(songs)) {
+      if (hitTest(pos, r)) {
+        sm.onSelectPracticeSong(r.songId);
+        return;
+      }
+    }
+    return;
+  }
 });
 
 // ─── Keyboard input ───────────────────────────────────────────────────────────
@@ -173,8 +186,9 @@ document.addEventListener('keydown', async (e) => {
     if (screen === 'GAME_OVER' || screen === 'VICTORY') { sm.onRestartGame(); return; }
   }
   if (e.key === 'Escape' && screen === 'SHOP') { sm.onLeaveShop(); return; }
+  if (e.key === 'Escape' && screen === 'PRACTICE') { sm.onLeavePractice(); return; }
 
-  // Piano keyboard shortcuts (only during battle, ignore held keys)
+  // Piano keyboard shortcuts (during battle or practice play, ignore held keys)
   if (screen === 'BATTLE' && !e.repeat) {
     const key = e.key.toLowerCase();
     const note = KEY_NOTE_MAP[key];
@@ -211,6 +225,7 @@ function render(state) {
       renderShopScreen(renderer, state);
       renderer.renderFeedback(state.feedback);
       break;
+    case 'PRACTICE':  renderPracticeScreen(renderer, state); break;
     case 'GAME_OVER': renderGameOverScreen(renderer, state); break;
     case 'VICTORY':   renderVictoryScreen(renderer, state); break;
   }
