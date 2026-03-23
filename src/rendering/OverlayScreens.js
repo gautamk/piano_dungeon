@@ -112,7 +112,7 @@ export function renderGameOverScreen(renderer, state) {
 
 /** Victory screen. */
 export function renderVictoryScreen(renderer, state) {
-  renderer.rect(0, 0, W, H, '#0a0f0a');
+  renderer.rect(0, 0, W, H, COLORS.bg);
 
   renderer.centeredText('VICTORY!', H / 2 - 120, {
     size: 64, color: COLORS.success, weight: 'bold',
@@ -138,15 +138,7 @@ export function renderVictoryScreen(renderer, state) {
 }
 
 function renderHpRow(renderer, player, y) {
-  const ctx = renderer.ctx;
-  const cx = W / 2;
-  ctx.font = '22px monospace';
-  ctx.textAlign = 'center';
-  ctx.textBaseline = 'middle';
-  for (let i = 0; i < player.maxHp; i++) {
-    ctx.fillStyle = i < player.hp ? COLORS.hp : COLORS.border;
-    ctx.fillText('♥', cx - (player.maxHp - 1) * 14 + i * 28, y);
-  }
+  renderer.hpHearts(player, W / 2, y, 22);
 }
 
 /** Hit regions for shop buttons. */

@@ -51,46 +51,37 @@ export function renderDungeonScreen(renderer, state) {
 function renderStatsRow(renderer, player) {
   const y = 108;
   const cx = W / 2;
-
-  // HP
-  const ctx = renderer.ctx;
-  for (let i = 0; i < player.maxHp; i++) {
-    ctx.font = '20px monospace';
-    ctx.fillStyle = i < player.hp ? COLORS.hp : COLORS.border;
-    ctx.textAlign = 'center';
-    ctx.textBaseline = 'middle';
-    const x = cx - (player.maxHp - 1) * 13 + i * 26;
-    ctx.fillText('♥', x, y);
-  }
-
+  renderer.hpHearts(player, cx, y);
   renderer.text(`Score: ${player.score}`, cx + 160, y, { size: 15, color: COLORS.accent, align: 'center' });
+}
+
+/** Shared room layout geometry — used by both rendering and hit testing. */
+function roomLayout(rooms) {
+  const roomW = 90, roomH = 90, gap = 30;
+  const totalW = rooms.length * (roomW + gap) - gap;
+  const startX = Math.max(40, (W - totalW) / 2);
+  const centerY = H / 2 + 10;
+  return { roomW, roomH, gap, startX, centerY };
 }
 
 function renderRooms(renderer, rooms) {
   if (!rooms.length) return;
 
-  const roomW = 90;
-  const roomH = 90;
-  const gap = 30;
-  const totalW = rooms.length * (roomW + gap) - gap;
-  const startX = Math.max(40, (W - totalW) / 2);
-  const centerY = H / 2 + 10;
+  const { roomW, roomH, gap, startX, centerY } = roomLayout(rooms);
 
   // Draw connector lines first
   for (let i = 0; i < rooms.length - 1; i++) {
     const x1 = startX + i * (roomW + gap) + roomW;
     const x2 = startX + (i + 1) * (roomW + gap);
-    const ly = centerY;
     const lineColor = rooms[i + 1].reachable ? COLORS.border : '#1a1a2e';
-    renderer.line(x1, ly, x2, ly, lineColor, 2);
+    renderer.line(x1, centerY, x2, centerY, lineColor, 2);
   }
 
   // Draw rooms
   for (let i = 0; i < rooms.length; i++) {
-    const room = rooms[i];
     const rx = startX + i * (roomW + gap);
     const ry = centerY - roomH / 2;
-    renderRoom(renderer, room, rx, ry, roomW, roomH);
+    renderRoom(renderer, rooms[i], rx, ry, roomW, roomH);
   }
 }
 
@@ -108,7 +99,7 @@ function renderRoom(renderer, room, x, y, w, h) {
     bgColor = COLORS.rooms.LOCKED;
     alpha = 0.4;
   } else {
-    borderColor = type === ROOM_TYPE.BOSS ? COLORS.accent : COLORS.accent;
+    borderColor = type === ROOM_TYPE.BOSS ? COLORS.danger : COLORS.accent;
   }
 
   const ctx = renderer.ctx;
@@ -139,13 +130,9 @@ function renderRoom(renderer, room, x, y, w, h) {
   ctx.globalAlpha = 1;
 }
 
-/** Returns the hit region for a room (for click detection). */
+/** Returns the hit region for each room (for click detection). */
 export function getRoomHitRegions(rooms) {
-  const roomW = 90, roomH = 90, gap = 30;
-  const totalW = rooms.length * (roomW + gap) - gap;
-  const startX = Math.max(40, (GAME_CONFIG.canvas.width - totalW) / 2);
-  const centerY = GAME_CONFIG.canvas.height / 2 + 10;
-
+  const { roomW, roomH, gap, startX, centerY } = roomLayout(rooms);
   return rooms.map((room, i) => ({
     room,
     index: i,

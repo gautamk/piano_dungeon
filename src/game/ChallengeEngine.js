@@ -148,16 +148,16 @@ export function evaluateNote(challenge, detectedNote) {
   }
 
   if (challenge.type === CHALLENGE_TYPE.CHORD) {
-    // Check if this note is one of the required chord tones
     for (const req of challenge.required) {
-      if (semitoneMatches(semitone, req) && !challenge.played.has(req)) {
+      if (semitoneMatches(semitone, req)) {
+        if (challenge.played.has(req)) return null; // already collected — ignore, don't penalise
         challenge.played.add(req);
         challenge.progress = challenge.played.size;
         if (challenge.played.size >= challenge.required.size) return 'SUCCESS';
         return 'PROGRESS';
       }
     }
-    // Played a non-chord tone
+    // Played a note that is not part of the chord
     return 'FAIL';
   }
 

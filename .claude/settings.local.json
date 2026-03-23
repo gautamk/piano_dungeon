@@ -17,7 +17,9 @@
       "mcp__Claude_Preview__preview_start",
       "Bash(wc -l src/**/*.js src/*.js src/audio/*.js src/game/*.js src/rendering/*.js src/data/*.js)",
       "Bash(bun add:*)",
-      "Bash(bun run:*)"
+      "Bash(bun run:*)",
+      "Bash(git push:*)",
+      "Bash(bun test:*)"
     ]
   }
 }

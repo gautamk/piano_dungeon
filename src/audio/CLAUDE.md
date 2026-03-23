@@ -18,7 +18,7 @@
 1. `new AudioEngine()` — no browser API calls yet
 2. `await audio.start(deviceId?)` — must be called inside a user gesture handler
    - Returns `true` if mic access granted, `false` if denied/unavailable
-   - Always creates `this.ctx` (even on failure) so the analyser can still be reused
+   - `this.ctx` is created **only on success** — it remains `null` if mic is denied
 3. `audio.tick()` — called every animation frame; updates `this.currentNote` and `this.rawFrequency`
 4. `audio.stop()` — tears down stream and context
 

@@ -4,7 +4,7 @@ import { StateMachine } from './game/StateMachine.js';
 import { Renderer } from './rendering/Renderer.js';
 import { renderTitleScreen, getStartButtonRegion } from './rendering/TitleScreen.js';
 import { renderDungeonScreen, getRoomHitRegions } from './rendering/DungeonScreen.js';
-import { renderBattleScreen } from './rendering/BattleScreen.js';
+import { renderBattleScreen, PIANO_LAYOUT } from './rendering/BattleScreen.js';
 import { getPianoKeyRegions, PIANO_START_OCTAVE, PIANO_NUM_OCTAVES } from './rendering/PianoRenderer.js';
 import {
   renderRoomClearScreen,
@@ -16,7 +16,6 @@ import {
   getRestartButtonRegion,
   getFloorClearButtonRegion,
 } from './rendering/OverlayScreens.js';
-import { GAME_CONFIG } from './config.js';
 
 // ─── Init ─────────────────────────────────────────────────────────────────────
 
@@ -40,12 +39,7 @@ function resizeCanvas() {
 window.addEventListener('resize', resizeCanvas);
 resizeCanvas();
 
-// ─── Piano strip layout (must match BattleScreen.js) ─────────────────────────
-
-const PIANO_X = 60;
-const PIANO_Y = GAME_CONFIG.canvas.height - 120;
-const PIANO_W = GAME_CONFIG.canvas.width - 120;
-const PIANO_H = 90;
+// PIANO_LAYOUT is imported from BattleScreen.js — single source of truth for hit testing
 
 // ─── Keyboard → virtual piano mapping ────────────────────────────────────────
 // Standard QWERTY piano layout (C4 octave on home row)
@@ -132,7 +126,7 @@ canvas.addEventListener('click', async (e) => {
 
   if (screen === 'BATTLE' || screen === 'ROOM_CLEAR') {
     // Check if click is on the piano strip (only act in BATTLE phase)
-    if (screen === 'BATTLE' && hitTest(pos, { x: PIANO_X, y: PIANO_Y, w: PIANO_W, h: PIANO_H })) {
+    if (screen === 'BATTLE' && hitTest(pos, PIANO_LAYOUT)) {
       const regions = getPianoKeyRegions(PIANO_X, PIANO_Y, PIANO_W, PIANO_H);
       // Test black keys first (on top), then white keys
       for (const key of regions) {

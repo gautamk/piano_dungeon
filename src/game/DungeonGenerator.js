@@ -37,8 +37,7 @@ export function createRoom(type, index, enemy = null) {
   return {
     type,
     index,
-    enemy,      // enemy archetype data (from enemies.js)
-    enemyHp: enemy ? scaleHp(enemy, 1) : 0, // set properly in generateFloor
+    enemy,    // enemy archetype data (from enemies.js) with currentHp/maxHp already scaled
     cleared: false,
     reachable: index === 0, // only first room reachable at start
   };

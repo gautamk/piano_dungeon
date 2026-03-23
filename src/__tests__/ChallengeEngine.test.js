@@ -96,12 +96,13 @@ describe('evaluateNote — CHORD challenge', () => {
     expect(evaluateNote(c, note(2))).toBe('FAIL'); // D is not in C major
   });
 
-  it('does not double-count a tone already played', () => {
+  it('ignores a tone already played (no penalty for re-pressing)', () => {
     const c = makeChordChallenge([0, 4, 7]);
     evaluateNote(c, note(0));
-    // Playing the same tone again shouldn't count
+    // Playing the same tone again should be silently ignored, not penalised
     const result = evaluateNote(c, note(0));
-    expect(result).toBe('FAIL'); // treated as wrong (not a remaining tone)
+    expect(result).toBeNull();
+    expect(c.played.size).toBe(1); // still only one tone collected
   });
 });
 

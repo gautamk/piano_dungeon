@@ -4,7 +4,6 @@ export const GAME_CONFIG = {
     fftSize: 2048,
     confidenceThreshold: 0.88,
     stabilityFrames: 3,
-    noteToleranceSemitones: 0, // must be exact semitone match
   },
   player: {
     maxHp: 5,
@@ -12,8 +11,6 @@ export const GAME_CONFIG = {
   },
   battle: {
     baseDamageToEnemy: 20,
-    critDamageToEnemy: 35,
-    baseDamageToPlayer: 10,
     nearMissDamageToPlayer: 3,
     comboThresholds: [3, 5],
     comboMultipliers: [1.5, 2.0],

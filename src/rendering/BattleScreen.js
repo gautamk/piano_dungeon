@@ -5,6 +5,14 @@ import { renderPianoStrip } from './PianoRenderer.js';
 const W = GAME_CONFIG.canvas.width;
 const H = GAME_CONFIG.canvas.height;
 
+// Piano strip layout — exported so main.js can use the same values for hit testing
+export const PIANO_LAYOUT = {
+  x: 60,
+  y: H - 120,
+  w: W - 120,
+  h: 90,
+};
+
 /**
  * Renders the battle screen: enemy, challenge description, timer, piano strip.
  */
@@ -27,18 +35,14 @@ export function renderBattleScreen(renderer, state) {
   renderChallengeArea(renderer, challenge, phase, timerMs, lastResult);
 
   // ── Piano strip (bottom)
-  const pianoY = H - 120;
-  const pianoH = 90;
-  const pianoX = 60;
-  const pianoW = W - 120;
   renderPianoStrip(renderer, {
     audioNote: audio.note,
     virtualNote: audio.virtualNote ?? null,
     challenge,
-    x: pianoX,
-    y: pianoY,
-    width: pianoW,
-    height: pianoH,
+    x: PIANO_LAYOUT.x,
+    y: PIANO_LAYOUT.y,
+    width: PIANO_LAYOUT.w,
+    height: PIANO_LAYOUT.h,
     inputMode: audio.inputMode ?? 'none',
   });
 
@@ -150,7 +154,6 @@ function renderChallengeArea(renderer, challenge, phase, timerMs, lastResult) {
 
   // Timer bar
   const timerBarW = 500;
-  const elapsed = challenge.timeMs - timerMs;
   const timerFrac = Math.max(0, timerMs / challenge.timeMs);
   const timerColor = timerFrac > 0.5 ? COLORS.success : timerFrac > 0.25 ? COLORS.warning : COLORS.danger;
   renderer.bar(cx - timerBarW / 2, areaY + areaH - 36, timerBarW, 14, timerMs, challenge.timeMs, timerColor, COLORS.bgLight, 7);

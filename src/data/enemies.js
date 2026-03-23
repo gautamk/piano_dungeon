@@ -7,7 +7,6 @@ export const ENEMY_ARCHETYPES = [
   {
     id: 'tone_deaf_ghost',
     name: 'Tone-Deaf Ghost',
-    sprite: '👻',
     emoji: '👻',
     floorRange: [1, 2],
     maxHp: 40,
@@ -18,7 +17,6 @@ export const ENEMY_ARCHETYPES = [
   {
     id: 'flat_bat',
     name: 'Flat Bat',
-    sprite: '🦇',
     emoji: '🦇',
     floorRange: [1, 3],
     maxHp: 30,
@@ -31,7 +29,6 @@ export const ENEMY_ARCHETYPES = [
   {
     id: 'interval_imp',
     name: 'Interval Imp',
-    sprite: '😈',
     emoji: '😈',
     floorRange: [3, 5],
     maxHp: 55,
@@ -42,7 +39,6 @@ export const ENEMY_ARCHETYPES = [
   {
     id: 'minor_mummy',
     name: 'Minor Mummy',
-    sprite: '🧟',
     emoji: '🧟',
     floorRange: [3, 5],
     maxHp: 60,
@@ -55,7 +51,6 @@ export const ENEMY_ARCHETYPES = [
   {
     id: 'scale_serpent',
     name: 'Scale Serpent',
-    sprite: '🐍',
     emoji: '🐍',
     floorRange: [5, 7],
     maxHp: 75,
@@ -66,7 +61,6 @@ export const ENEMY_ARCHETYPES = [
   {
     id: 'arpeggio_wraith',
     name: 'Arpeggio Wraith',
-    sprite: '💀',
     emoji: '💀',
     floorRange: [6, 8],
     maxHp: 80,
@@ -79,7 +73,6 @@ export const ENEMY_ARCHETYPES = [
   {
     id: 'chord_golem',
     name: 'Chord Golem',
-    sprite: '🗿',
     emoji: '🗿',
     floorRange: [8, 9],
     maxHp: 100,
@@ -90,7 +83,6 @@ export const ENEMY_ARCHETYPES = [
   {
     id: 'dissonance_demon',
     name: 'Dissonance Demon',
-    sprite: '😱',
     emoji: '😱',
     floorRange: [8, 10],
     maxHp: 90,
@@ -103,7 +95,6 @@ export const ENEMY_ARCHETYPES = [
   {
     id: 'chromatic_count',
     name: 'Chromatic Count',
-    sprite: '🧛',
     emoji: '🧛',
     floorRange: [3, 10],
     elite: true,
@@ -117,40 +108,44 @@ export const ENEMY_ARCHETYPES = [
 // Boss per floor cluster
 export const BOSSES = [
   {
+    id: 'the_warden',
+    name: 'The Warden',
+    emoji: '🔒',
+    floor: 2,
+    maxHp: 80,
+    attackPower: 12,
+    lore: 'Guards the cellar gate. Knows only one note — but plays it with authority.',
+    challengeWeights: { NOTE: 10, INTERVAL: 0, SCALE: 0, CHORD: 0 },
+  },
+  {
     id: 'flat_king',
     name: 'King of Flats',
-    sprite: '👑',
     emoji: '👑',
-    floor: 3,
+    floor: 4,
     maxHp: 150,
     attackPower: 20,
+    lore: 'Rules the catacombs with an iron fist — and no sense of pitch.',
     challengeWeights: { NOTE: 5, INTERVAL: 5, SCALE: 0, CHORD: 0 },
-    phases: 2,
-    lore: 'Rules the cellar with an iron fist — and no sense of pitch.',
   },
   {
     id: 'scale_queen',
     name: 'Scale Queen',
-    sprite: '👸',
     emoji: '👸',
-    floor: 6,
+    floor: 7,
     maxHp: 200,
     attackPower: 25,
-    challengeWeights: { NOTE: 2, INTERVAL: 4, SCALE: 4, CHORD: 0 },
-    phases: 2,
     lore: 'Commands every scale ever written. Descending runs are her favorite.',
+    challengeWeights: { NOTE: 2, INTERVAL: 4, SCALE: 4, CHORD: 0 },
   },
   {
     id: 'the_maestro',
     name: 'The Maestro',
-    sprite: '🎭',
     emoji: '🎭',
     floor: 10,
     maxHp: 300,
     attackPower: 30,
-    challengeWeights: { NOTE: 2, INTERVAL: 2, SCALE: 3, CHORD: 3 },
-    phases: 3,
     lore: 'Ancient conductor of the void. To defeat him is to master music itself.',
+    challengeWeights: { NOTE: 2, INTERVAL: 2, SCALE: 3, CHORD: 3 },
   },
 ];
 
@@ -167,6 +162,6 @@ export function getEliteEnemiesForFloor(floor) {
 }
 
 export function getBossForFloor(floor) {
-  // Find the boss at or before this floor
+  // Find the boss whose floor threshold is at or before the current floor
   return BOSSES.filter(b => b.floor <= floor).at(-1) ?? BOSSES[0];
 }

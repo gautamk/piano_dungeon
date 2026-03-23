@@ -97,4 +97,17 @@ export class Renderer {
   centeredText(str, y, opts = {}) {
     this.text(str, this.W / 2, y, { align: 'center', ...opts });
   }
+
+  /** Row of HP hearts centred on (cx, y). */
+  hpHearts(player, cx, y, size = 20) {
+    const ctx = this.ctx;
+    const spacing = Math.round(size * 1.4);
+    ctx.font = `${size}px monospace`;
+    ctx.textAlign = 'center';
+    ctx.textBaseline = 'middle';
+    for (let i = 0; i < player.maxHp; i++) {
+      ctx.fillStyle = i < player.hp ? COLORS.hp : COLORS.border;
+      ctx.fillText('♥', cx - (player.maxHp - 1) * (spacing / 2) + i * spacing, y);
+    }
+  }
 }
