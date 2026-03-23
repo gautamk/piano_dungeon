@@ -6,4 +6,8 @@ export default defineConfig({
     target: 'es2022',
     outDir: 'dist',
   },
+  test: {
+    environment: 'node',
+    include: ['src/**/*.test.js'],
+  },
 });

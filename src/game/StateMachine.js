@@ -13,8 +13,9 @@ import { COLORS } from '../config.js';
 const RESULT_SHOW_MS = 900;
 
 export class StateMachine {
-  constructor(audioEngine) {
+  constructor(audioEngine, audioSynth) {
     this.audio = audioEngine;
+    this.synth = audioSynth ?? null;
     this.state = createGameState();
 
     // One-shot virtual note (set by triggerVirtualNote, consumed in tick)
@@ -36,6 +37,8 @@ export class StateMachine {
     this._virtualNote = { semitone, octave, name, midi, frequency: null, cents: 0, virtual: true };
     // Update display note immediately so the piano strip lights up
     this.state.audio.virtualNote = this._virtualNote;
+    // Play the note through speakers
+    this.synth?.playNote(semitone, octave);
   }
 
   // ─── Public API ────────────────────────────────────────────────────────────
@@ -111,6 +114,8 @@ export class StateMachine {
     s.battle.phase = 'WAITING';
     s.battle.lastResult = null;
     this._lastActedMidi = null;
+    // Play target note(s) as a teaching prompt
+    this.synth?.previewChallenge(s.battle.challenge);
   }
 
   _tickBattle(deltaMs) {

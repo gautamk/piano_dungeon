@@ -1,4 +1,5 @@
 import { AudioEngine } from './audio/AudioEngine.js';
+import { AudioSynth } from './audio/AudioSynth.js';
 import { StateMachine } from './game/StateMachine.js';
 import { Renderer } from './rendering/Renderer.js';
 import { renderTitleScreen, getStartButtonRegion } from './rendering/TitleScreen.js';
@@ -21,7 +22,8 @@ import { GAME_CONFIG } from './config.js';
 
 const canvas = document.getElementById('game');
 const audio = new AudioEngine();
-const sm = new StateMachine(audio);
+const synth = new AudioSynth();
+const sm = new StateMachine(audio, synth);
 const renderer = new Renderer(canvas);
 
 // Scale canvas to fill window (letterboxed)
@@ -102,6 +104,7 @@ async function startMic() {
 async function handleTitleStart() {
   sm.state.micError = null;
   await startMic(); // always attempt; game starts regardless of outcome
+  await synth.start(); // initialize Tone.js output (requires user gesture)
   sm.onStartGame();
 }
 
@@ -237,4 +240,4 @@ function loop(now) {
 requestAnimationFrame((now) => { lastTime = now; requestAnimationFrame(loop); });
 
 // Debug hook — exposes game internals for preview/testing
-window.__game = { sm, audio, startGame: () => sm.onStartGame() };
+window.__game = { sm, audio, synth, startGame: () => sm.onStartGame() };

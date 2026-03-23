@@ -13,7 +13,11 @@
       "Bash(git add:*)",
       "Bash(git commit:*)",
       "Bash(npm install:*)",
-      "Bash(bun install:*)"
+      "Bash(bun install:*)",
+      "mcp__Claude_Preview__preview_start",
+      "Bash(wc -l src/**/*.js src/*.js src/audio/*.js src/game/*.js src/rendering/*.js src/data/*.js)",
+      "Bash(bun add:*)",
+      "Bash(bun run:*)"
     ]
   }
 }

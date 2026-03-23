@@ -10,8 +10,9 @@ src/
 ├── main.js              # Entry: game loop, input, render dispatch
 ├── config.js            # Constants (GAME_CONFIG, COLORS) — change values here first
 ├── audio/
-│   ├── AudioEngine.js   # Owns AudioContext + MediaStream lifecycle
-│   ├── PitchDetector.js # Autocorrelation pitch detection (most critical file)
+│   ├── AudioEngine.js   # Mic input: owns the input AudioContext + MediaStream lifecycle
+│   ├── AudioSynth.js    # Audio output: Tone.js piano synth for note playback + previews
+│   ├── PitchDetector.js # McLeod Pitch Method detection via pitchy (most critical file)
 │   └── NoteMapper.js    # Pure functions: Hz → MIDI → note name
 ├── game/
 │   ├── GameState.js     # Plain mutable object — single source of truth
@@ -35,14 +36,14 @@ src/
 ### Code Style
 1. ES modules throughout (`import`/`export`) — no CommonJS, no dynamic `require()`
 2. Vanilla JS only — no TypeScript, no JSX, no framework
-3. No runtime npm dependencies — Vite is the only devDependency
+3. Approved runtime deps: `pitchy` (pitch detection), `tone` (audio output). Do not add others without strong justification.
 4. Canvas for all game rendering — no DOM manipulation inside game screens
 5. Keep functions under 50 lines — extract helpers when they grow
 
 ### Architecture
 6. `StateMachine.js` is the only file that calls `sm.go()` — never transition from renderers
 7. `ChallengeEngine.js` is the only file that calls `evaluateNote()` — single evaluation path
-8. `AudioEngine.js` owns the `AudioContext` — never create another one
+8. `AudioEngine.js` owns the **input** AudioContext (mic pipeline). `AudioSynth.js` owns Tone.js output. Never mix the two contexts.
 9. `GameState.js` holds the only mutable game state — renderers receive it as a parameter, never import it directly
 10. Renderers are pure render functions `(renderer, state) => void` — no side effects, no state writes
 11. `DungeonGenerator.js` must remain deterministic given the same seed
@@ -50,7 +51,7 @@ src/
 ### What NOT To Do
 - Do not add TypeScript, JSX, or any compile-to-JS language
 - Do not add React, Vue, Svelte, or any UI framework
-- Do not add runtime npm dependencies (no lodash, no three.js, etc.)
+- Do not add runtime npm dependencies beyond `pitchy` and `tone`
 - Do not use `setTimeout`/`setInterval` for game timing — use delta time from the game loop
 - Do not use `async/await` inside the game loop — only at initialization boundaries
 - Do not add a CSS framework or preprocessor
@@ -60,7 +61,8 @@ src/
 - Confidence threshold is in `GAME_CONFIG.audio.confidenceThreshold` (default 0.88)
 - Stability frames in `GAME_CONFIG.audio.stabilityFrames` (default 3 frames ~50ms)
 - If piano detection is too sensitive/slow, adjust these values first before changing algorithm
-- The autocorrelation algorithm in `PitchDetector.js` works for monophonic piano — do not replace with FFT-based detection without profiling first
+- `PitchDetector.js` uses pitchy's McLeod Pitch Method — more accurate than autocorrelation for piano, avoids octave errors. Do not replace without profiling first.
+- Challenge preview volume is controlled in `AudioSynth.js` (`_previewSynth` volume, default -14 dB). Virtual piano volume is `_synth` (default -4 dB).
 
 ### Adding Content
 - New enemy: add to `src/data/enemies.js` `ENEMY_ARCHETYPES` array
