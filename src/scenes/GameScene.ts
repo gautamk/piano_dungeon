@@ -72,23 +72,23 @@ export abstract class GameScene<TData = SceneActivationData> extends ex.Scene<TD
   override onActivate(_ctx: ex.SceneActivationContext<TData>): void {
     this._boundClick = (e: MouseEvent) => { void this.handleClick(this._toLogical(e)); };
     this.engine.canvas.addEventListener('click', this._boundClick);
+    this.sm.setTransitionCallback((screen, data) => {
+      if (!this.screens.includes(screen)) {
+        void this.engine.goToScene(SCREEN_TO_SCENE[screen], { sceneActivationData: data });
+      }
+    });
   }
 
   override onDeactivate(_ctx: ex.SceneActivationContext<never>): void {
     if (this._boundClick) {
       this.engine.canvas.removeEventListener('click', this._boundClick);
     }
+    this.sm.clearTransitionCallback();
   }
 
-  override onPreUpdate(engine: ex.Engine, elapsed: number): void {
+  override onPreUpdate(_engine: ex.Engine, elapsed: number): void {
     this.audio.tick();
     this.sm.tick(elapsed);
-    const next = this.sm.state.screen;
-    if (!this.screens.includes(next)) {
-      const data = this.sm._pendingSceneData;
-      this.sm._pendingSceneData = null;
-      void engine.goToScene(SCREEN_TO_SCENE[next], { sceneActivationData: data ?? {} });
-    }
   }
 
   /** Called each frame; subclasses render their screen here. */

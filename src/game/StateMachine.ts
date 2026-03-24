@@ -39,8 +39,9 @@ export class StateMachine {
   // Prevent double-triggering the same MIDI within one challenge phase
   _lastActedMidi: number | null;
 
-  // Pending scene activation data — read by GameScene.onPreUpdate before calling engine.goToScene()
-  _pendingSceneData: SceneActivationData | null = null;
+  // Registered by the active GameScene; called immediately when go() fires a screen transition.
+  // Cleared on scene deactivate to avoid stale references between scenes.
+  private _transitionCallback: ((screen: Screen, data: SceneActivationData) => void) | null = null;
 
   constructor(audioEngine: AudioEngine, audioSynth: AudioSynth | null) {
     this.audio = audioEngine;
@@ -82,9 +83,17 @@ export class StateMachine {
     this._tickScreen(deltaMs);
   }
 
-  go(screen: Screen, data: SceneActivationData): void {
+  setTransitionCallback(fn: (screen: Screen, data: SceneActivationData) => void): void {
+    this._transitionCallback = fn;
+  }
+
+  clearTransitionCallback(): void {
+    this._transitionCallback = null;
+  }
+
+  private go(screen: Screen, data: SceneActivationData): void {
     this.state.screen = screen;
-    this._pendingSceneData = data;
+    this._transitionCallback?.(screen, data);
   }
 
   // ─── Per-Screen Tick ────────────────────────────────────────────────────────
