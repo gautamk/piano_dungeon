@@ -1,8 +1,8 @@
-import type { Screen } from '../types.js';
+import type { Screen, ShopActivationData } from '../types.js';
 import { renderShopScreen, getShopHitRegions } from '../rendering/OverlayScreens.js';
 import { GameScene, type SceneDeps } from './GameScene.js';
 
-export class ShopScene extends GameScene {
+export class ShopScene extends GameScene<ShopActivationData> {
   readonly screens: Screen[] = ['SHOP'];
 
   constructor(deps: SceneDeps) { super(deps); }

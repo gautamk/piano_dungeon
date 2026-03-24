@@ -1,8 +1,8 @@
-import type { Screen } from '../types.js';
+import type { Screen, GameOverActivationData } from '../types.js';
 import { renderGameOverScreen, getRestartButtonRegion } from '../rendering/OverlayScreens.js';
 import { GameScene, type SceneDeps } from './GameScene.js';
 
-export class GameOverScene extends GameScene {
+export class GameOverScene extends GameScene<GameOverActivationData> {
   readonly screens: Screen[] = ['GAME_OVER'];
 
   constructor(deps: SceneDeps) { super(deps); }

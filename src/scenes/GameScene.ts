@@ -1,5 +1,5 @@
 import * as ex from 'excalibur';
-import type { Screen } from '../types.js';
+import type { Screen, SceneActivationData } from '../types.js';
 import type { StateMachine } from '../game/StateMachine.js';
 import type { AudioEngine } from '../audio/AudioEngine.js';
 import type { AudioSynth } from '../audio/AudioSynth.js';
@@ -35,7 +35,7 @@ export const SCREEN_TO_SCENE: Record<Screen, string> = {
  *    when the state machine has transitioned away from this scene's screens
  *  - Registers / removes the canvas click listener in `onActivate` / `onDeactivate`
  */
-export abstract class GameScene extends ex.Scene {
+export abstract class GameScene<TData = SceneActivationData> extends ex.Scene<TData> {
   protected sm: StateMachine;
   protected audio: AudioEngine;
   protected synth: AudioSynth;
@@ -69,12 +69,12 @@ export abstract class GameScene extends ex.Scene {
     this.add(actor);
   }
 
-  override onActivate(_ctx: ex.SceneActivationContext): void {
+  override onActivate(_ctx: ex.SceneActivationContext<TData>): void {
     this._boundClick = (e: MouseEvent) => { void this.handleClick(this._toLogical(e)); };
     this.engine.canvas.addEventListener('click', this._boundClick);
   }
 
-  override onDeactivate(_ctx: ex.SceneActivationContext): void {
+  override onDeactivate(_ctx: ex.SceneActivationContext<never>): void {
     if (this._boundClick) {
       this.engine.canvas.removeEventListener('click', this._boundClick);
     }
@@ -85,7 +85,9 @@ export abstract class GameScene extends ex.Scene {
     this.sm.tick(elapsed);
     const next = this.sm.state.screen;
     if (!this.screens.includes(next)) {
-      void engine.goToScene(SCREEN_TO_SCENE[next]);
+      const data = this.sm._pendingSceneData;
+      this.sm._pendingSceneData = null;
+      void engine.goToScene(SCREEN_TO_SCENE[next], { sceneActivationData: data ?? {} });
     }
   }
 

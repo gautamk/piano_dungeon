@@ -1,8 +1,8 @@
-import type { Screen } from '../types.js';
+import type { Screen, FloorClearActivationData } from '../types.js';
 import { renderFloorClearScreen, getFloorClearButtonRegion } from '../rendering/OverlayScreens.js';
 import { GameScene, type SceneDeps } from './GameScene.js';
 
-export class FloorClearScene extends GameScene {
+export class FloorClearScene extends GameScene<FloorClearActivationData> {
   readonly screens: Screen[] = ['FLOOR_CLEAR'];
 
   constructor(deps: SceneDeps) { super(deps); }

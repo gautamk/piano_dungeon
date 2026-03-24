@@ -1,11 +1,22 @@
-import type { Screen } from '../types.js';
+import * as ex from 'excalibur';
+import type { Screen, TitleActivationData } from '../types.js';
 import { renderTitleScreen, getStartButtonRegion } from '../rendering/TitleScreen.js';
+import { createGameState } from '../game/GameState.js';
 import { GameScene, type SceneDeps } from './GameScene.js';
 
-export class TitleScene extends GameScene {
+export class TitleScene extends GameScene<TitleActivationData> {
   readonly screens: Screen[] = ['TITLE'];
 
   constructor(deps: SceneDeps) { super(deps); }
+
+  override onActivate(ctx: ex.SceneActivationContext<TitleActivationData>): void {
+    super.onActivate(ctx);
+    if (ctx.data?.resetState) {
+      this.sm.state = createGameState();
+      this.sm.state.micDevices = this.audio.devices;
+      this.sm.state.audio.inputMode = this.audio.inputMode;
+    }
+  }
 
   renderFrame(): void {
     renderTitleScreen(this.renderer, this.sm.state);

@@ -1,14 +1,25 @@
-import type { Screen } from '../types.js';
+import * as ex from 'excalibur';
+import type { Screen, BattleActivationData } from '../types.js';
 import { renderBattleScreen, PIANO_LAYOUT } from '../rendering/BattleScreen.js';
 import { renderRoomClearScreen } from '../rendering/OverlayScreens.js';
 import { getPianoKeyRegions } from '../rendering/PianoRenderer.js';
 import { GameScene, type SceneDeps } from './GameScene.js';
 
-export class BattleScene extends GameScene {
+export class BattleScene extends GameScene<BattleActivationData> {
   // ROOM_CLEAR renders the battle screen underneath + overlay on top
   readonly screens: Screen[] = ['BATTLE', 'ROOM_CLEAR'];
 
   constructor(deps: SceneDeps) { super(deps); }
+
+  override onActivate(ctx: ex.SceneActivationContext<BattleActivationData>): void {
+    super.onActivate(ctx);
+    // Only init battle when arriving at BATTLE — not when transitioning to the
+    // ROOM_CLEAR overlay (which shares this scene and never fires onActivate again).
+    if (this.sm.state.screen === 'BATTLE') {
+      this.sm.state.battle.isPractice = ctx.data?.isPractice ?? false;
+      this.sm.startBattle();
+    }
+  }
 
   renderFrame(): void {
     const { screen, feedback } = this.sm.state;

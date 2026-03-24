@@ -1,11 +1,12 @@
 import type {
   GameState, Screen, Enemy, Challenge, VirtualNote, EvaluationResult,
+  SceneActivationData,
 } from '../types.js';
 import { GAME_CONFIG, COLORS } from '../config.js';
 import {
   createGameState, damagePlayer, healPlayer, scoreHit, spawnFeedback, tickFeedback,
 } from './GameState.js';
-import { generateFloor, unlockNextRoom, ROOM_TYPE } from './DungeonGenerator.js';
+import { unlockNextRoom, ROOM_TYPE } from './DungeonGenerator.js';
 import {
   generateChallenge,
   generateMelodyChallenge,
@@ -37,6 +38,9 @@ export class StateMachine {
 
   // Prevent double-triggering the same MIDI within one challenge phase
   _lastActedMidi: number | null;
+
+  // Pending scene activation data — read by GameScene.onPreUpdate before calling engine.goToScene()
+  _pendingSceneData: SceneActivationData | null = null;
 
   constructor(audioEngine: AudioEngine, audioSynth: AudioSynth | null) {
     this.audio = audioEngine;
@@ -78,30 +82,9 @@ export class StateMachine {
     this._tickScreen(deltaMs);
   }
 
-  go(screen: Screen): void {
+  go(screen: Screen, data: SceneActivationData): void {
     this.state.screen = screen;
-    this._onEnter(screen);
-  }
-
-  // ─── Screen Enter ───────────────────────────────────────────────────────────
-
-  private _onEnter(screen: Screen): void {
-    const s = this.state;
-    if (screen === 'DUNGEON_MAP') {
-      if (s.dungeon.rooms.length === 0) {
-        s.dungeon.rooms = generateFloor(s.player.floor, s.dungeon.runSeed);
-        s.dungeon.currentIndex = -1;
-      }
-    }
-    if (screen === 'BATTLE') this._startBattle();
-    if (screen === 'PRACTICE') {
-      s.practice.songs = SONGS_LIST;
-    }
-    if (screen === 'TITLE') {
-      this.state = createGameState();
-      this.state.micDevices = this.audio.devices;
-      this.state.audio.inputMode = this.audio.inputMode;
-    }
+    this._pendingSceneData = data;
   }
 
   // ─── Per-Screen Tick ────────────────────────────────────────────────────────
@@ -112,7 +95,7 @@ export class StateMachine {
 
   // ─── Battle Logic ───────────────────────────────────────────────────────────
 
-  private _startBattle(): void {
+  startBattle(): void {
     const s = this.state;
     const room = s.dungeon.rooms[s.dungeon.currentIndex];
     if (!room?.enemy) return;
@@ -164,7 +147,7 @@ export class StateMachine {
         if (battle.lastResult === 'SUCCESS' && battle.enemy && battle.enemy.currentHp <= 0) {
           this._clearRoom();
         } else if (s.player.hp <= 0) {
-          this.go('GAME_OVER');
+          this.go('GAME_OVER', {});
         } else {
           this._newChallenge();
         }
@@ -290,13 +273,13 @@ export class StateMachine {
 
     if (room.type === ROOM_TYPE.BOSS) {
       if (s.player.floor >= GAME_CONFIG.player.maxFloors) {
-        this.go('VICTORY');
+        this.go('VICTORY', {});
       } else {
-        this.go('FLOOR_CLEAR');
+        this.go('FLOOR_CLEAR', {});
       }
       return;
     }
-    this.go('ROOM_CLEAR');
+    this.go('ROOM_CLEAR', {});
   }
 
   // ─── Action Handlers ────────────────────────────────────────────────────────
@@ -304,9 +287,7 @@ export class StateMachine {
   onStartGame(): void {
     this.state.micDevices = this.audio.devices;
     this.state.audio.inputMode = this.audio.inputMode;
-    this.state.dungeon.rooms = generateFloor(1, this.state.dungeon.runSeed);
-    this.state.dungeon.rooms[0].reachable = true;
-    this.go('DUNGEON_MAP');
+    this.go('DUNGEON_MAP', { generateFloor: true });
   }
 
   onEnterRoom(roomIndex: number): void {
@@ -319,22 +300,20 @@ export class StateMachine {
       room.cleared = true;
       unlockNextRoom(this.state.dungeon.rooms, roomIndex);
       spawnFeedback(this.state, 'Rested. +2 HP', 640, 360, COLORS.success);
-      this.go('DUNGEON_MAP');
+      this.go('DUNGEON_MAP', { generateFloor: false });
       return;
     }
     if (room.type === ROOM_TYPE.SHOP) {
       room.cleared = true;
       unlockNextRoom(this.state.dungeon.rooms, roomIndex);
-      this.go('SHOP');
+      this.go('SHOP', {});
       return;
     }
     if (room.type === ROOM_TYPE.PRACTICE) {
-      this.state.battle.isPractice = true;
-      this.go('PRACTICE');
+      this.go('PRACTICE', { songs: SONGS_LIST });
       return;
     }
-    this.state.battle.isPractice = false;
-    this.go('BATTLE');
+    this.go('BATTLE', { isPractice: false });
   }
 
   /**
@@ -361,25 +340,21 @@ export class StateMachine {
     };
 
     this.state.battle.melodyChallengePhrase = 0;
-    this.go('BATTLE');
+    this.go('BATTLE', { isPractice: true });
   }
 
   onContinueAfterRoomClear(): void {
-    this.state.battle.isPractice = false;
-    this.go('DUNGEON_MAP');
+    this.go('DUNGEON_MAP', { generateFloor: false });
   }
 
   onLeavePractice(): void {
-    this.state.battle.isPractice = false;
-    this.go('DUNGEON_MAP');
+    this.go('DUNGEON_MAP', { generateFloor: false });
   }
 
   onNextFloor(): void {
-    const s = this.state;
-    s.player.floor++;
-    s.dungeon.rooms = generateFloor(s.player.floor, s.dungeon.runSeed);
-    s.dungeon.currentIndex = -1;
-    this.go('DUNGEON_MAP');
+    this.state.player.floor++;
+    this.state.dungeon.currentIndex = -1;
+    this.go('DUNGEON_MAP', { generateFloor: true });
   }
 
   onBuyHp(): void {
@@ -392,7 +367,7 @@ export class StateMachine {
     }
   }
 
-  onLeaveShop(): void { this.go('DUNGEON_MAP'); }
+  onLeaveShop(): void { this.go('DUNGEON_MAP', { generateFloor: false }); }
 
-  onRestartGame(): void { this.go('TITLE'); }
+  onRestartGame(): void { this.go('TITLE', { resetState: true }); }
 }

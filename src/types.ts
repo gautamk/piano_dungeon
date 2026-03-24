@@ -301,6 +301,25 @@ export interface ColorPalette {
   };
 }
 
+// ─── Scene Activation Payloads ───────────────────────────────────────────────
+// Passed as sceneActivationData when calling engine.goToScene().
+// Each scene's onActivate receives the matching payload via context.data.
+
+export interface TitleActivationData      { resetState: true }
+export interface DungeonMapActivationData { generateFloor: boolean }
+export interface BattleActivationData     { isPractice: boolean }
+export interface PracticeActivationData   { songs: Song[] }
+export type ShopActivationData        = Record<string, never>;
+export type FloorClearActivationData  = Record<string, never>;
+export type GameOverActivationData    = Record<string, never>;
+export type VictoryActivationData     = Record<string, never>;
+
+export type SceneActivationData =
+  | TitleActivationData | DungeonMapActivationData
+  | BattleActivationData | PracticeActivationData
+  | ShopActivationData | FloorClearActivationData
+  | GameOverActivationData | VictoryActivationData;
+
 // ─── Rendering ────────────────────────────────────────────────────────────────
 
 export interface KeyRegion {
