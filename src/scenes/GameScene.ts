@@ -56,16 +56,19 @@ export abstract class GameScene<TData = SceneActivationData> extends ex.Scene<TD
   }
 
   override onInitialize(_engine: ex.Engine): void {
+    const dpr = this.renderer.dpr;
     const legacyCanvas = new ex.Canvas({
-      width: 1280,
-      height: 720,
+      width: 1280 * dpr,
+      height: 720 * dpr,
       cache: false,
       draw: (ctx) => {
         this.renderer.ctx = ctx;
+        ctx.setTransform(dpr, 0, 0, dpr, 0, 0);
         this.renderFrame();
       },
     });
     const actor = new ex.Actor({ x: 0, y: 0, anchor: ex.Vector.Zero });
+    actor.scale = new ex.Vector(1 / dpr, 1 / dpr);
     actor.graphics.use(legacyCanvas);
     this.add(actor);
   }

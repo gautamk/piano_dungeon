@@ -42,7 +42,11 @@
       "Bash(printf \"Scene architecture is now in place \\(all 9 screens as ex.Scene subclasses, committed 1279b4a\\). Typed SceneActivationContext payloads still pending — sm.go\\(\\)/sm.state.screen still used for transitions; this bead tracks the upgrade to typed data passing.\")",
       "Skill(commit-commands:commit)",
       "Skill(commit-commands:commit:*)",
-      "Bash(__NEW_LINE_7d0733d2ae6536b8__ bd:*)"
+      "Bash(__NEW_LINE_7d0733d2ae6536b8__ bd:*)",
+      "Bash(git -C /Users/gk/Development/piano_trainer add .claude/skills/)",
+      "Bash(git -C:*)",
+      "Bash(grep -n \"SettingsScene\\\\|SettingsScreen\" /Users/gk/Development/piano_trainer/src/scenes/*.ts)",
+      "Bash(xargs ls:*)"
     ]
   }
 }
