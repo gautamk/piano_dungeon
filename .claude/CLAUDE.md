@@ -5,7 +5,15 @@ Browser-based piano teaching roguelike. Uses Web Audio API for real-time pitch d
 from a USB-C piano microphone. TypeScript + ES modules + Vite + Excalibur.js game engine.
 
 ## Task Management
-Track all new work in **beads** (`bd create`, `bd list`, `bd close`). Do not maintain inline task lists inside CLAUDE.md files — open a bead instead.
+Track all work in **beads** — do not maintain inline task lists inside CLAUDE.md files.
+
+**Workflow:**
+- **Starting a task:** `bd create "<title>"` before beginning work
+- **Task completed:** `bd close <bead-id>` immediately when done
+- **Task blocked or failed:** `bd comments add <bead-id> "<reason>"` to note the blocker; leave the bead open
+- **Review open work:** `bd list` — check before starting new tasks to avoid duplication
+
+Commands: `bd create`, `bd list`, `bd close`, `bd comments add`, `bd edit`
 
 ## Architecture
 ```

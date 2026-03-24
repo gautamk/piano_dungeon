@@ -38,7 +38,10 @@
       "Bash(bd dep:*)",
       "Bash(bd edit:*)",
       "Bash(bd comment:*)",
-      "Bash(bd comments:*)"
+      "Bash(bd comments:*)",
+      "Bash(printf \"Scene architecture is now in place \\(all 9 screens as ex.Scene subclasses, committed 1279b4a\\). Typed SceneActivationContext payloads still pending — sm.go\\(\\)/sm.state.screen still used for transitions; this bead tracks the upgrade to typed data passing.\")",
+      "Skill(commit-commands:commit)",
+      "Skill(commit-commands:commit:*)"
     ]
   }
 }
