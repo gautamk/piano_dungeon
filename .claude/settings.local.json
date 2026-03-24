@@ -33,7 +33,12 @@
       "Bash(bunx bdui:*)",
       "Bash(bunx tsc:*)",
       "Bash(bd ls:*)",
-      "Bash(bd list:*)"
+      "Bash(bd list:*)",
+      "Bash(bd graph:*)",
+      "Bash(bd dep:*)",
+      "Bash(bd edit:*)",
+      "Bash(bd comment:*)",
+      "Bash(bd comments:*)"
     ]
   }
 }
