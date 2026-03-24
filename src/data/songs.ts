@@ -24,16 +24,16 @@ export const SONGS: Record<string, Song> = {
     composer: 'Beethoven',
     difficulty: 5,
     phrases: [
-      // Phrase 1: The famous opening motif (A minor)
+      // Phrase 1: The famous opening motif (A minor) — transposed to octave 4 to fit visible keyboard (C3–B4)
       [
-        { semitone: 4, octave: 5, durationMs: E },   // E5
-        { semitone: 3, octave: 5, durationMs: E },   // D#5
-        { semitone: 4, octave: 5, durationMs: E },   // E5
-        { semitone: 3, octave: 5, durationMs: E },   // D#5
-        { semitone: 4, octave: 5, durationMs: E },   // E5
+        { semitone: 4, octave: 4, durationMs: E },   // E4
+        { semitone: 3, octave: 4, durationMs: E },   // D#4
+        { semitone: 4, octave: 4, durationMs: E },   // E4
+        { semitone: 3, octave: 4, durationMs: E },   // D#4
+        { semitone: 4, octave: 4, durationMs: E },   // E4
         { semitone: 11, octave: 4, durationMs: E },  // B4
-        { semitone: 2, octave: 5, durationMs: E },   // D5
-        { semitone: 0, octave: 5, durationMs: E },   // C5
+        { semitone: 2, octave: 4, durationMs: E },   // D4
+        { semitone: 0, octave: 4, durationMs: E },   // C4
         { semitone: 9, octave: 4, durationMs: Q },   // A4
       ],
       // Phrase 2: A minor chord walk
@@ -48,7 +48,7 @@ export const SONGS: Record<string, Song> = {
         { semitone: 4, octave: 4, durationMs: E },   // E4
         { semitone: 8, octave: 4, durationMs: E },   // G#4
         { semitone: 11, octave: 4, durationMs: E },  // B4
-        { semitone: 0, octave: 5, durationMs: Q },   // C5
+        { semitone: 0, octave: 4, durationMs: Q },   // C4
       ],
     ],
   },
