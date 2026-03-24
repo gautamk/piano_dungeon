@@ -14,7 +14,7 @@
 **This is the only file allowed to:**
 - Import and instantiate `AudioEngine`, `AudioSynth`, `StateMachine`, `Renderer`
 - Create the `ex.Engine` and register all scenes
-- Register global DOM keyboard listeners (`keydown`, `keyup`)
+- Register the Excalibur keyboard handler (`engine.input.keyboard.on('press', ...)`)
 
 **The game loop** is owned by Excalibur. Each scene's `onPreUpdate(engine, elapsed)` runs the tick:
 ```ts
@@ -28,12 +28,17 @@ Always initialise `Renderer` with a detached canvas: `new Renderer(document.crea
 The `renderer.ctx` is replaced each frame inside the `ex.Canvas` draw callback.
 
 **Keyboard input:**
-- Navigation keys (`Enter`, `Escape`) are handled with a `document keydown` listener that reads `sm.state.screen` and calls the appropriate SM handler
-- Piano keys use `KEY_NOTE_MAP` (QWERTY layout); guarded with `heldKeys` Set to prevent key-repeat spam
+- Registered via `engine.input.keyboard.on('press', ...)` inside `engine.start().then()`
+- Navigation keys (`Enter`, `Escape`) read `sm.state.screen` and call the appropriate SM handler
+- Piano keys use `KEY_NOTE_MAP` (QWERTY layout); Excalibur fires `'press'` once per physical keydown (no repeat), so no `heldKeys` Set is needed
 - Only `triggerVirtualNote()` calls are made from the keyboard handler — no rendering or state writes
 
+**Pointer input:**
+- `GameScene.onActivate` registers `engine.input.pointers.primary.on('up', ...)` and removes it in `onDeactivate`
+- `PointerEvent.screenPos` is already in logical 1280×720 coordinates — no coordinate conversion needed
+
 **Coordinate system:** All logical coordinates are 1280×720 regardless of display DPI or window size.
-Excalibur's `DisplayMode.FitScreen` handles letterboxing; `GameScene._toLogical()` uses `getBoundingClientRect()` for pointer mapping.
+Excalibur's `DisplayMode.FitScreen` handles letterboxing.
 
 **Adding a new screen:**
 1. Create `src/scenes/MyScreen.ts` extending `GameScene` — implement `renderFrame()` and `handleClick()`

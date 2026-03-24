@@ -62,38 +62,6 @@ const KEY_NOTE_MAP = {
   m: { semitone: 11, octave: 3 },
 };
 
-// ─── Keyboard input ───────────────────────────────────────────────────────────
-
-const heldKeys = new Set<string>(); // prevent key repeat for piano keys
-
-document.addEventListener('keydown', async (e) => {
-  const screen = sm.state.screen;
-
-  // Navigation keys
-  if (e.key === 'Enter') {
-    if (screen === 'ROOM_CLEAR') { sm.onContinueAfterRoomClear(); return; }
-    if (screen === 'FLOOR_CLEAR') { sm.onNextFloor(); return; }
-    if (screen === 'GAME_OVER' || screen === 'VICTORY') { sm.onRestartGame(); return; }
-  }
-  if (e.key === 'Escape' && screen === 'SHOP') { sm.onLeaveShop(); return; }
-  if (e.key === 'Escape' && screen === 'PRACTICE') { sm.onLeavePractice(); return; }
-  if (e.key === 'Escape' && screen === 'SETTINGS') { sm.onCloseSettings(); return; }
-
-  // Piano keyboard shortcuts (during battle, ignore held keys)
-  if (screen === 'BATTLE' && !e.repeat) {
-    const key = e.key.toLowerCase();
-    const note = (KEY_NOTE_MAP as Record<string, { semitone: number; octave: number } | undefined>)[key];
-    if (note && !heldKeys.has(key)) {
-      heldKeys.add(key);
-      sm.triggerVirtualNote(note.semitone, note.octave);
-    }
-  }
-});
-
-document.addEventListener('keyup', (e) => {
-  heldKeys.delete(e.key.toLowerCase());
-});
-
 // ─── Scenes ───────────────────────────────────────────────────────────────────
 
 const deps = { sm, audio, synth, renderer };
@@ -112,6 +80,30 @@ engine.addScene('settings',    new SettingsScene(deps));
 
 engine.start().then(() => {
   engine.input.pointers.primary.once('down', () => { void synth.unlockContext(); });
+
+  engine.input.keyboard.on('press', (evt) => {
+    const screen = sm.state.screen;
+
+    // Navigation keys — evt.key is ev.code e.g. ex.Keys.Enter
+    if (evt.key === ex.Keys.Enter) {
+      if (screen === 'ROOM_CLEAR') { sm.onContinueAfterRoomClear(); return; }
+      if (screen === 'FLOOR_CLEAR') { sm.onNextFloor(); return; }
+      if (screen === 'GAME_OVER' || screen === 'VICTORY') { sm.onRestartGame(); return; }
+    }
+    if (evt.key === ex.Keys.Escape) {
+      if (screen === 'SHOP')     { sm.onLeaveShop(); return; }
+      if (screen === 'PRACTICE') { sm.onLeavePractice(); return; }
+      if (screen === 'SETTINGS') { sm.onCloseSettings(); return; }
+    }
+
+    // Piano keyboard shortcuts (battle only) — evt.value is ev.key e.g. 'a', 's'
+    if (screen === 'BATTLE') {
+      const key = evt.value?.toLowerCase() ?? '';
+      const note = (KEY_NOTE_MAP as Record<string, { semitone: number; octave: number } | undefined>)[key];
+      if (note) sm.triggerVirtualNote(note.semitone, note.octave);
+    }
+  });
+
   engine.goToScene('title');
 });
 

@@ -45,7 +45,7 @@ export abstract class GameScene<TData = SceneActivationData> extends ex.Scene<TD
   /** Screen names this scene is responsible for. */
   abstract readonly screens: Screen[];
 
-  private _boundClick?: (e: MouseEvent) => void;
+  private _boundPointerUp?: (e: ex.PointerEvent) => void;
 
   constructor(deps: SceneDeps) {
     super();
@@ -71,8 +71,8 @@ export abstract class GameScene<TData = SceneActivationData> extends ex.Scene<TD
   }
 
   override onActivate(_ctx: ex.SceneActivationContext<TData>): void {
-    this._boundClick = (e: MouseEvent) => { void this.handleClick(this._toLogical(e)); };
-    this.engine.canvas.addEventListener('click', this._boundClick);
+    this._boundPointerUp = (e: ex.PointerEvent) => { void this.handleClick({ x: e.screenPos.x, y: e.screenPos.y }); };
+    this.engine.input.pointers.primary.on('up', this._boundPointerUp);
     this.sm.setTransitionCallback((screen, data) => {
       if (!this.screens.includes(screen)) {
         void this.engine.goToScene(SCREEN_TO_SCENE[screen], { sceneActivationData: data });
@@ -81,8 +81,8 @@ export abstract class GameScene<TData = SceneActivationData> extends ex.Scene<TD
   }
 
   override onDeactivate(_ctx: ex.SceneActivationContext<never>): void {
-    if (this._boundClick) {
-      this.engine.canvas.removeEventListener('click', this._boundClick);
+    if (this._boundPointerUp) {
+      this.engine.input.pointers.primary.off('up', this._boundPointerUp);
     }
     this.sm.clearTransitionCallback();
   }
@@ -97,14 +97,6 @@ export abstract class GameScene<TData = SceneActivationData> extends ex.Scene<TD
 
   /** Called on canvas click with logical 1280×720 coordinates. */
   abstract handleClick(pos: { x: number; y: number }): void | Promise<void>;
-
-  protected _toLogical(e: MouseEvent): { x: number; y: number } {
-    const rect = this.engine.canvas.getBoundingClientRect();
-    return {
-      x: (e.clientX - rect.left) * (1280 / rect.width),
-      y: (e.clientY - rect.top)  * (720  / rect.height),
-    };
-  }
 
   protected _hit(
     pos: { x: number; y: number },
