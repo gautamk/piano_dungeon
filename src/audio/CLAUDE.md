@@ -8,8 +8,6 @@
 | `PitchDetector.ts` | Wraps `pitchy` (McLeod Pitch Method) with note-stability logic |
 | `NoteMapper.ts` | Pure functions — Hz ↔ MIDI ↔ note name conversions |
 
-Pending Excalibur Scene migration: beads `cpx` (AudioEngine lifecycle) and `4md` (AudioSynth lifecycle).
-
 ---
 
 ## AudioEngine
@@ -30,7 +28,7 @@ Pending Excalibur Scene migration: beads `cpx` (AudioEngine lifecycle) and `4md`
 
 **Rules:**
 - Do not create a second `AudioContext` for input — ever
-- Do not call `tick()` from anywhere other than `LegacyActor.onPreUpdate` in `main.ts`
+- Do not call `tick()` from anywhere other than `GameScene.onPreUpdate`
 - `inputMode` is `'mic'` when the stream is live, `'none'` otherwise — renderers read this from state
 - Device preference is persisted in `localStorage` under `pianoMicDeviceId`
 
