@@ -1,6 +1,7 @@
-import type { GameState, FeedbackMessage, AppSettings } from '../types.js';
+import type { GameState, FeedbackMessage, AppSettings, SavedRunState } from '../types.js';
 
 const SETTINGS_KEY = 'pianoDungeonSettings';
+const RUN_STATE_KEY = 'pianoDungeonRunState';
 
 const DEFAULT_SETTINGS: AppSettings = {
   micEnabled: true,
@@ -22,6 +23,30 @@ export function loadSettings(): AppSettings {
 
 export function saveSettings(s: AppSettings): void {
   localStorage.setItem(SETTINGS_KEY, JSON.stringify(s));
+}
+
+export function saveRunState(state: GameState): void {
+  const saved: SavedRunState = {
+    runSeed: state.dungeon.runSeed,
+    hp: state.player.hp,
+    floor: state.player.floor,
+    score: state.player.score,
+  };
+  localStorage.setItem(RUN_STATE_KEY, JSON.stringify(saved));
+}
+
+export function loadSavedRun(): SavedRunState | null {
+  try {
+    const raw = localStorage.getItem(RUN_STATE_KEY);
+    if (!raw) return null;
+    return JSON.parse(raw) as SavedRunState;
+  } catch {
+    return null;
+  }
+}
+
+export function clearSavedRun(): void {
+  localStorage.removeItem(RUN_STATE_KEY);
 }
 
 /**
@@ -61,6 +86,9 @@ export function createGameState(): GameState {
       failTooltip: null,
       lastWrongSemitone: null,
       lastCorrectSemitone: null,
+      screenFlash: null,
+      enemyShakeTtl: 0,
+      lastPlayedKey: null,
     },
 
     // Song practice state (populated when entering PRACTICE screen)
@@ -86,6 +114,8 @@ export function createGameState(): GameState {
     micError: null,
 
     settings: loadSettings(),
+    loadingProgress: null,
+    savedRun: loadSavedRun(),
   };
 }
 
@@ -120,4 +150,18 @@ export function tickFeedback(state: GameState, deltaMs: number): void {
     f.y += f.vy;
   }
   state.feedback = state.feedback.filter(f => f.ttl > 0);
+}
+
+/** Advance battle visual FX animations each frame (deltaMs). */
+export function tickBattleFx(state: GameState, deltaMs: number): void {
+  const b = state.battle;
+  if (b.enemyShakeTtl > 0) b.enemyShakeTtl = Math.max(0, b.enemyShakeTtl - deltaMs);
+  if (b.screenFlash) {
+    b.screenFlash.ttl -= deltaMs;
+    if (b.screenFlash.ttl <= 0) b.screenFlash = null;
+  }
+  if (b.lastPlayedKey) {
+    b.lastPlayedKey.ttl -= deltaMs;
+    if (b.lastPlayedKey.ttl <= 0) b.lastPlayedKey = null;
+  }
 }

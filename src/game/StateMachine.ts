@@ -5,6 +5,7 @@ import type {
 import { GAME_CONFIG, COLORS } from '../config.js';
 import {
   createGameState, damagePlayer, healPlayer, scoreHit, spawnFeedback, tickFeedback,
+  tickBattleFx, saveRunState, clearSavedRun,
 } from './GameState.js';
 import { unlockNextRoom, ROOM_TYPE } from './DungeonGenerator.js';
 import {
@@ -68,6 +69,8 @@ export class StateMachine {
     if (this._virtualNoteQueue.length < 4) this._virtualNoteQueue.push(vNote);
     // Update display note immediately so the piano strip lights up
     this.state.audio.virtualNote = vNote;
+    // Drive key depress animation
+    this.state.battle.lastPlayedKey = { semitone, octave, ttl: 200 };
     // Play the note through speakers
     this.synth?.playNote(semitone, octave);
   }
@@ -81,6 +84,7 @@ export class StateMachine {
     this.state.audio.inputMode = this.audio.inputMode;
 
     tickFeedback(this.state, deltaMs);
+    tickBattleFx(this.state, deltaMs);
     this._tickScreen(deltaMs);
   }
 
@@ -160,6 +164,8 @@ export class StateMachine {
         if (battle.lastResult === 'SUCCESS' && battle.enemy && battle.enemy.currentHp <= 0) {
           this._clearRoom();
         } else if (s.player.hp <= 0) {
+          clearSavedRun();
+          s.savedRun = null;
           this.go('GAME_OVER', {});
         } else {
           this._newChallenge();
@@ -230,6 +236,7 @@ export class StateMachine {
       battle.enemy.currentHp = Math.max(0, battle.enemy.currentHp - dmg);
       scoreHit(s, dmg);
       battle.consecutiveWrong = 0;
+      battle.enemyShakeTtl = 400;
       const comboText = s.player.combo >= 5 ? ' COMBO x2!' : s.player.combo >= 3 ? ' COMBO x1.5!' : '';
       spawnFeedback(s, `PERFECT! -${dmg}${comboText}`, cx, cy - 60, COLORS.success);
       this._endChallenge(battle, 'SUCCESS');
@@ -263,6 +270,7 @@ export class StateMachine {
       const dmg = battle.enemy.attackPower;
       damagePlayer(s, dmg);
       battle.consecutiveWrong++;
+      battle.screenFlash = { color: 'rgba(248,113,113,0.45)', ttl: 350, maxTtl: 350 };
       spawnFeedback(s, `WRONG! -${dmg} HP`, cx, cy - 60, COLORS.danger);
       this._endChallenge(battle, 'FAIL');
     }
@@ -302,8 +310,12 @@ export class StateMachine {
 
     if (room.type === ROOM_TYPE.BOSS) {
       if (s.player.floor >= GAME_CONFIG.player.maxFloors) {
+        clearSavedRun();
+        s.savedRun = null;
         this.go('VICTORY', {});
       } else {
+        saveRunState(s);
+        s.savedRun = { runSeed: s.dungeon.runSeed, hp: s.player.hp, floor: s.player.floor, score: s.player.score };
         this.go('FLOOR_CLEAR', {});
       }
       return;
@@ -314,8 +326,22 @@ export class StateMachine {
   // ─── Action Handlers ────────────────────────────────────────────────────────
 
   onStartGame(): void {
+    this.state.loadingProgress = null;
     this.state.micDevices = this.audio.devices;
     this.state.audio.inputMode = this.audio.inputMode;
+    this.go('DUNGEON_MAP', { generateFloor: true });
+  }
+
+  onContinueRun(): void {
+    const saved = this.state.savedRun;
+    if (!saved) return;
+    this.state.player.hp = saved.hp;
+    this.state.player.floor = saved.floor;
+    this.state.player.score = saved.score;
+    this.state.dungeon.runSeed = saved.runSeed;
+    this.state.dungeon.currentIndex = -1;
+    clearSavedRun();
+    this.state.savedRun = null;
     this.go('DUNGEON_MAP', { generateFloor: true });
   }
 
@@ -329,6 +355,8 @@ export class StateMachine {
       room.cleared = true;
       unlockNextRoom(this.state.dungeon.rooms, roomIndex);
       spawnFeedback(this.state, 'Rested. +2 HP', 640, 360, COLORS.success);
+      saveRunState(this.state);
+      this.state.savedRun = { runSeed: this.state.dungeon.runSeed, hp: this.state.player.hp, floor: this.state.player.floor, score: this.state.player.score };
       this.go('DUNGEON_MAP', { generateFloor: false });
       return;
     }
@@ -383,6 +411,8 @@ export class StateMachine {
   onNextFloor(): void {
     this.state.player.floor++;
     this.state.dungeon.currentIndex = -1;
+    saveRunState(this.state);
+    this.state.savedRun = { runSeed: this.state.dungeon.runSeed, hp: this.state.player.hp, floor: this.state.player.floor, score: this.state.player.score };
     this.go('DUNGEON_MAP', { generateFloor: true });
   }
 
@@ -393,6 +423,8 @@ export class StateMachine {
       s.player.score -= cost;
       healPlayer(s, 2);
       spawnFeedback(s, '+2 HP', 640, 360, COLORS.success);
+      saveRunState(s);
+      s.savedRun = { runSeed: s.dungeon.runSeed, hp: s.player.hp, floor: s.player.floor, score: s.player.score };
     }
   }
 

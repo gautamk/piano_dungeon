@@ -27,6 +27,10 @@ export class BattleScene extends GameScene<BattleActivationData> {
   private _hpBarFill!: ex.Actor;
   private _challengeLabel!: ex.Label;
 
+  // Base X positions for shake offset calculation
+  private _enemyEmojiBaseX = EP_X + 16;
+  private _hpBarBaseX = HP_BAR_X;
+
   constructor(deps: SceneDeps) { super(deps); }
 
   override onInitialize(engine: ex.Engine): void {
@@ -119,6 +123,7 @@ export class BattleScene extends GameScene<BattleActivationData> {
           showLabels: settings.showPianoLabels,
           wrongSemitone: battle.lastWrongSemitone,
           correctSemitone: battle.lastCorrectSemitone,
+          depressedKey: battle.lastPlayedKey,
         });
         this.renderer.ctx = saved;
       },
@@ -168,6 +173,13 @@ export class BattleScene extends GameScene<BattleActivationData> {
 
     // Challenge label text
     this._challengeLabel.text = battle.challenge?.label ?? '';
+
+    // Apply enemy shake offset to actors (mirrors canvas renderEnemyPanel shake formula)
+    const shakeTtl = battle.enemyShakeTtl;
+    const shakeX = shakeTtl > 0 ? Math.sin(shakeTtl * 0.04) * (shakeTtl / 400) * 10 : 0;
+    this._enemyEmoji.pos.x = this._enemyEmojiBaseX + shakeX;
+    this._hpBarBg.pos.x = this._hpBarBaseX + shakeX;
+    this._hpBarFill.pos.x = this._hpBarBaseX + shakeX;
   }
 
   private _drainFeedback(): void {

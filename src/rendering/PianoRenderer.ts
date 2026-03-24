@@ -68,6 +68,7 @@ export function renderPianoStrip(
     showLabels = true,
     wrongSemitone = null,
     correctSemitone = null,
+    depressedKey = null,
   }: {
     audioNote: DetectedNote | null;
     virtualNote: VirtualNote | null;
@@ -82,6 +83,8 @@ export function renderPianoStrip(
     wrongSemitone?: number | null;
     /** Semitone the player should have played on FAIL — shown in green. */
     correctSemitone?: number | null;
+    /** Most recently pressed key — rendered with a depress offset for tactile feedback. */
+    depressedKey?: { semitone: number; octave: number; ttl: number } | null;
   }
 ): void {
   const ctx = renderer.ctx;
@@ -106,17 +109,21 @@ export function renderPianoStrip(
       const isWrong = isFailMode && semitone === wrongSemitone;
       const isCorrect = isFailMode && semitone === correctSemitone;
 
+      const isDepressed = depressedKey?.semitone === semitone && depressedKey?.octave === oct;
+      const depressInset = isDepressed ? 2 : 0;
+
       let color = COLORS.keys.white;
       if (isActive) color = isVirtual ? '#a3e635' : COLORS.keys.playing; // lime for virtual, green for mic
+      else if (isDepressed) color = '#d0d0d0';           // slightly grey when depressed
       else if (isWrong) color = COLORS.danger + 'cc';    // red tint for wrong key
       else if (isCorrect) color = COLORS.success + 'cc'; // green tint for correct key
       else if (isHighlight && !isFailMode) color = COLORS.keys.highlight;
 
       ctx.fillStyle = color;
-      ctx.fillRect(keyX, y, whiteW - 1, height);
+      ctx.fillRect(keyX, y + depressInset, whiteW - 1, height - depressInset);
       ctx.strokeStyle = '#888';
       ctx.lineWidth = 0.5;
-      ctx.strokeRect(keyX, y, whiteW - 1, height);
+      ctx.strokeRect(keyX, y + depressInset, whiteW - 1, height - depressInset);
 
       // Labels: when showLabels=true show all white keys; otherwise only C anchor + active + highlighted
       const showLabel = showLabels || isHighlight || isActive || semitone === 0;
@@ -146,14 +153,18 @@ export function renderPianoStrip(
         const isWrong = isFailMode && nextSemitone === wrongSemitone;
         const isCorrect = isFailMode && nextSemitone === correctSemitone;
 
+        const isDepressedBlack = depressedKey?.semitone === nextSemitone && depressedKey?.octave === oct;
+        const depressInsetB = isDepressedBlack ? 2 : 0;
+
         let color = COLORS.keys.black;
         if (isActive) color = isVirtual ? '#65a30d' : COLORS.keys.playing;
+        else if (isDepressedBlack) color = '#444';
         else if (isWrong) color = '#b91c1c';
         else if (isCorrect) color = '#15803d';
         else if (isHighlight && !isFailMode) color = '#c8a000';
 
         ctx.fillStyle = color;
-        ctx.fillRect(bx, y, blackW, blackH);
+        ctx.fillRect(bx, y + depressInsetB, blackW, blackH - depressInsetB);
       }
       keyX += whiteW;
     }

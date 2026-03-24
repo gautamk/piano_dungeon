@@ -43,14 +43,35 @@ export function renderTitleScreen(renderer: Renderer, state: GameState): void {
     renderer.centeredText(`ℹ ${state.micError}`, H / 2 + 198, { size: 12, color: COLORS.warning });
   }
 
+  // Continue Run button (shown when a saved run exists)
+  if (state.savedRun) {
+    const { x: cx, y: cy, w: cw, h: ch } = getContinueButtonRegion();
+    const saved = state.savedRun;
+    renderer.rect(cx, cy, cw, ch, COLORS.success + '33', 8);
+    renderer.rectStroke(cx, cy, cw, ch, COLORS.success, 1, 8);
+    renderer.text('↩  Continue Run', W / 2, cy + ch / 2 - 8, {
+      size: 15, color: COLORS.success, align: 'center', weight: 'bold',
+    });
+    renderer.text(`Floor ${saved.floor}  •  HP ${saved.hp}  •  Score ${saved.score}`, W / 2, cy + ch / 2 + 10, {
+      size: 11, color: COLORS.textDim, align: 'center',
+    });
+  }
+
   // Start button
   const btnW = 280, btnH = 50;
   const btnX = W / 2 - btnW / 2;
   const btnY = H / 2 + 218;
-  renderer.rect(btnX, btnY, btnW, btnH, COLORS.accent, 8);
-  renderer.text('▶  Start Game', W / 2, btnY + btnH / 2, {
-    size: 18, color: '#000', align: 'center', weight: 'bold',
+  const isLoading = state.loadingProgress !== null;
+  renderer.rect(btnX, btnY, btnW, btnH, isLoading ? COLORS.border : COLORS.accent, 8);
+  renderer.text(isLoading ? 'Initializing...' : '▶  Start Game', W / 2, btnY + btnH / 2, {
+    size: 18, color: isLoading ? COLORS.textDim : '#000', align: 'center', weight: 'bold',
   });
+
+  // Loading progress bar (below Start button)
+  if (isLoading) {
+    const progress = state.loadingProgress ?? 0;
+    renderer.bar(btnX, btnY + btnH + 6, btnW, 6, progress, 100, COLORS.accent, COLORS.surface, 3);
+  }
 
   renderer.centeredText('Press  ENTER  or  click  to  start', H - 22, {
     size: 12, color: COLORS.textDim,
@@ -68,6 +89,11 @@ export function renderTitleScreen(renderer: Renderer, state: GameState): void {
 export function getStartButtonRegion(): HitRegion {
   const btnW = 280, btnH = 50;
   return { x: W / 2 - btnW / 2, y: H / 2 + 218, w: btnW, h: btnH };
+}
+
+export function getContinueButtonRegion(): HitRegion {
+  const btnW = 280, btnH = 48;
+  return { x: W / 2 - btnW / 2, y: H / 2 + 160, w: btnW, h: btnH };
 }
 
 export function getSettingsButtonRegion(): HitRegion {

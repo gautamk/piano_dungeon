@@ -22,7 +22,7 @@ export function renderBattleScreen(renderer: Renderer, state: GameState): void {
   renderer.rect(0, 0, W, H, COLORS.bg);
 
   // ── Enemy panel (top-left)
-  renderEnemyPanel(renderer, enemy, player.combo);
+  renderEnemyPanel(renderer, enemy, player.combo, battle.enemyShakeTtl);
 
   // ── Player panel (top-right)
   renderPlayerPanel(renderer, player);
@@ -41,10 +41,22 @@ export function renderBattleScreen(renderer: Renderer, state: GameState): void {
   renderer.text(`Floor ${player.floor}`, W / 2, 18, {
     size: 14, color: COLORS.textDim, align: 'center',
   });
+
+  // ── Screen flash overlay (success/fail FX)
+  if (battle.screenFlash) {
+    const alpha = battle.screenFlash.ttl / battle.screenFlash.maxTtl;
+    const ctx = renderer.ctx;
+    ctx.save();
+    ctx.globalAlpha = alpha;
+    ctx.fillStyle = battle.screenFlash.color;
+    ctx.fillRect(0, 0, W, H);
+    ctx.restore();
+  }
 }
 
-function renderEnemyPanel(renderer: Renderer, enemy: Enemy, combo: number): void {
-  const x = 40, y = 40, w = 320, h = 200;
+function renderEnemyPanel(renderer: Renderer, enemy: Enemy, combo: number, shakeTtl = 0): void {
+  const shakeX = shakeTtl > 0 ? Math.sin(shakeTtl * 0.04) * (shakeTtl / 400) * 10 : 0;
+  const x = 40 + shakeX, y = 40, w = 320, h = 200;
 
   // Panel background
   renderer.rect(x, y, w, h, COLORS.surface, 8);

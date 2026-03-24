@@ -1,7 +1,7 @@
 import * as ex from 'excalibur';
 import type { Screen, TitleActivationData } from '../types.js';
-import { renderTitleScreen, getStartButtonRegion, getSettingsButtonRegion } from '../rendering/TitleScreen.js';
-import { createGameState } from '../game/GameState.js';
+import { renderTitleScreen, getStartButtonRegion, getSettingsButtonRegion, getContinueButtonRegion } from '../rendering/TitleScreen.js';
+import { createGameState, clearSavedRun } from '../game/GameState.js';
 import { GameScene, type SceneDeps } from './GameScene.js';
 
 export class TitleScene extends GameScene<TitleActivationData> {
@@ -31,9 +31,22 @@ export class TitleScene extends GameScene<TitleActivationData> {
       return;
     }
 
-    // Start game
+    // Continue Run button
+    if (this.sm.state.savedRun && this._hit(pos, getContinueButtonRegion())) {
+      this.sm.onContinueRun();
+      return;
+    }
+
+    // Start game — guard against double-click during loading
     if (this._hit(pos, getStartButtonRegion())) {
+      if (this.sm.state.loadingProgress !== null) return;
+
+      // Explicit new game clears any saved run
+      clearSavedRun();
+      this.sm.state.savedRun = null;
+
       this.sm.state.micError = null;
+      this.sm.state.loadingProgress = 0;
       const { settings } = this.sm.state;
 
       if (settings.micEnabled) {
@@ -41,6 +54,7 @@ export class TitleScene extends GameScene<TitleActivationData> {
         this.sm.state.audio.inputMode = this.audio.inputMode;
         this.sm.state.micDevices = this.audio.devices;
         this.sm.state.outputDevices = this.audio.outputDevices;
+        this.sm.state.loadingProgress = 50;
         if (!ok) {
           this.sm.state.micError = 'Mic not available — using virtual piano. Click keys or use A-S-D-F-G-H-J.';
         } else if (settings.micRebroadcast) {
@@ -48,12 +62,14 @@ export class TitleScene extends GameScene<TitleActivationData> {
         }
       } else {
         this.sm.state.audio.inputMode = 'none';
+        this.sm.state.loadingProgress = 50;
       }
 
       await this.synth.start();
       if (settings.outputDeviceId) {
         await this.synth.setOutputDevice(settings.outputDeviceId);
       }
+      this.sm.state.loadingProgress = 100;
 
       this.sm.onStartGame();
     }

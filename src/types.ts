@@ -234,6 +234,12 @@ export interface BattleState {
   lastWrongSemitone: number | null;
   /** Semitone the player should have played on FAIL (for green key highlight). */
   lastCorrectSemitone: number | null;
+  /** Full-screen flash overlay driven by TTL (ms). Null when inactive. */
+  screenFlash: { color: string; ttl: number; maxTtl: number } | null;
+  /** TTL (ms) for enemy panel shake animation after a successful hit. */
+  enemyShakeTtl: number;
+  /** Most recently pressed piano key, kept alive for a short depress animation. */
+  lastPlayedKey: { semitone: number; octave: number; ttl: number } | null;
 }
 
 export interface AudioState {
@@ -256,6 +262,14 @@ export interface AppSettings {
   showPianoLabels: boolean;
 }
 
+/** Persisted to localStorage so a run survives a browser refresh. */
+export interface SavedRunState {
+  runSeed: number;
+  hp: number;
+  floor: number;
+  score: number;
+}
+
 export interface GameState {
   screen: Screen;
   player: PlayerState;
@@ -268,6 +282,10 @@ export interface GameState {
   outputDevices: MediaDeviceInfo[];
   micError: string | null;
   settings: AppSettings;
+  /** Non-null (0–100) while async audio init is in progress on the title screen. */
+  loadingProgress: number | null;
+  /** Populated from localStorage; shown as a Continue button on the title screen. */
+  savedRun: SavedRunState | null;
 }
 
 // ─── Config ───────────────────────────────────────────────────────────────────

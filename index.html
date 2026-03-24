@@ -2,7 +2,7 @@
 <html lang="en">
 <head>
   <meta charset="UTF-8" />
-  <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+  <meta name="viewport" content="width=device-width, initial-scale=1.0, user-scalable=no" />
   <title>Piano Dungeon</title>
   <style>
     * { margin: 0; padding: 0; box-sizing: border-box; }
@@ -16,6 +16,9 @@
       align-items: center;
       justify-content: center;
       font-family: monospace;
+      touch-action: none;
+      -webkit-user-select: none;
+      user-select: none;
     }
 
     #game {
@@ -23,6 +26,8 @@
       image-rendering: pixelated;
       image-rendering: crisp-edges;
       cursor: pointer;
+      touch-action: none;
+      -webkit-tap-highlight-color: transparent;
     }
   </style>
 </head>
