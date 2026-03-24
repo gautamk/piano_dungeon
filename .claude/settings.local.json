@@ -46,7 +46,10 @@
       "Bash(git -C /Users/gk/Development/piano_trainer add .claude/skills/)",
       "Bash(git -C:*)",
       "Bash(grep -n \"SettingsScene\\\\|SettingsScreen\" /Users/gk/Development/piano_trainer/src/scenes/*.ts)",
-      "Bash(xargs ls:*)"
+      "Bash(xargs ls:*)",
+      "Bash(npx tsc:*)",
+      "Bash(find /Users/gk/Development/piano_trainer/node_modules/excalibur/build/dist -name Font* -o -name *font*)",
+      "Bash(find /Users/gk/Development/piano_trainer/node_modules/excalibur/build/dist -name Label*)"
     ]
   }
 }
