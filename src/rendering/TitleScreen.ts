@@ -55,9 +55,21 @@ export function renderTitleScreen(renderer: Renderer, state: GameState): void {
   renderer.centeredText('Press  ENTER  or  click  to  start', H - 22, {
     size: 12, color: COLORS.textDim,
   });
+
+  // Settings button (top-right)
+  const { x: sx, y: sy, w: sw, h: sh } = getSettingsButtonRegion();
+  renderer.rect(sx, sy, sw, sh, COLORS.surface, 6);
+  renderer.rectStroke(sx, sy, sw, sh, COLORS.border, 1, 6);
+  renderer.text('⚙  Settings', sx + sw / 2, sy + sh / 2, {
+    size: 13, color: COLORS.text, align: 'center',
+  });
 }
 
 export function getStartButtonRegion(): HitRegion {
   const btnW = 280, btnH = 50;
   return { x: W / 2 - btnW / 2, y: H / 2 + 218, w: btnW, h: btnH };
+}
+
+export function getSettingsButtonRegion(): HitRegion {
+  return { x: W - 160, y: 20, w: 130, h: 36 };
 }

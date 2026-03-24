@@ -15,6 +15,10 @@ export class AudioSynth {
     this._started = false;
   }
 
+  async unlockContext(): Promise<void> {
+    await Tone.start();
+  }
+
   async start(): Promise<void> {
     if (this._started) return;
     await Tone.start(); // resumes Tone's AudioContext; requires prior user gesture
@@ -40,6 +44,20 @@ export class AudioSynth {
     try {
       this._synth.triggerAttackRelease(freq, '4n');
     } catch { /* silently absorb polyphony overflow */ }
+  }
+
+  /**
+   * Route Tone.js output to a specific speaker device (Chrome/Edge 110+ only).
+   * Silently no-ops on unsupported browsers.
+   */
+  async setOutputDevice(deviceId: string | null): Promise<void> {
+    if (!this._started) return;
+    try {
+      const rawCtx = Tone.getContext().rawContext as AudioContext & { setSinkId?: (id: string) => Promise<void> };
+      if (typeof rawCtx.setSinkId === 'function') {
+        await rawCtx.setSinkId(deviceId ?? '');
+      }
+    } catch { /* unsupported or permission denied */ }
   }
 
   private _toFreq(semitone: number, octave: number): number {

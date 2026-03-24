@@ -1,6 +1,6 @@
 import * as ex from 'excalibur';
 import type { Screen, TitleActivationData } from '../types.js';
-import { renderTitleScreen, getStartButtonRegion } from '../rendering/TitleScreen.js';
+import { renderTitleScreen, getStartButtonRegion, getSettingsButtonRegion } from '../rendering/TitleScreen.js';
 import { createGameState } from '../game/GameState.js';
 import { GameScene, type SceneDeps } from './GameScene.js';
 
@@ -13,9 +13,11 @@ export class TitleScene extends GameScene<TitleActivationData> {
     super.onActivate(ctx);
     if (ctx.data?.resetState) {
       this.sm.state = createGameState();
-      this.sm.state.micDevices = this.audio.devices;
-      this.sm.state.audio.inputMode = this.audio.inputMode;
     }
+    // Always sync device lists and input mode from AudioEngine into state
+    this.sm.state.micDevices = this.audio.devices;
+    this.sm.state.outputDevices = this.audio.outputDevices;
+    this.sm.state.audio.inputMode = this.audio.inputMode;
   }
 
   renderFrame(): void {
@@ -23,14 +25,36 @@ export class TitleScene extends GameScene<TitleActivationData> {
   }
 
   async handleClick(pos: { x: number; y: number }): Promise<void> {
+    // Settings button
+    if (this._hit(pos, getSettingsButtonRegion())) {
+      this.sm.onOpenSettings();
+      return;
+    }
+
+    // Start game
     if (this._hit(pos, getStartButtonRegion())) {
       this.sm.state.micError = null;
-      const ok = await this.audio.start();
-      this.sm.state.audio.inputMode = this.audio.inputMode;
-      if (!ok) {
-        this.sm.state.micError = 'Mic not available — using virtual piano. Click keys or use A-S-D-F-G-H-J.';
+      const { settings } = this.sm.state;
+
+      if (settings.micEnabled) {
+        const ok = await this.audio.start(settings.micDeviceId ?? undefined);
+        this.sm.state.audio.inputMode = this.audio.inputMode;
+        this.sm.state.micDevices = this.audio.devices;
+        this.sm.state.outputDevices = this.audio.outputDevices;
+        if (!ok) {
+          this.sm.state.micError = 'Mic not available — using virtual piano. Click keys or use A-S-D-F-G-H-J.';
+        } else if (settings.micRebroadcast) {
+          await this.audio.setRebroadcast(true, settings.outputDeviceId);
+        }
+      } else {
+        this.sm.state.audio.inputMode = 'none';
       }
+
       await this.synth.start();
+      if (settings.outputDeviceId) {
+        await this.synth.setOutputDevice(settings.outputDeviceId);
+      }
+
       this.sm.onStartGame();
     }
   }

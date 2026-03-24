@@ -11,6 +11,7 @@ import { ShopScene } from './scenes/ShopScene.js';
 import { PracticeScene } from './scenes/PracticeScene.js';
 import { GameOverScene } from './scenes/GameOverScene.js';
 import { VictoryScene } from './scenes/VictoryScene.js';
+import { SettingsScene } from './scenes/SettingsScene.js';
 
 // ─── Engine ───────────────────────────────────────────────────────────────────
 
@@ -76,6 +77,7 @@ document.addEventListener('keydown', async (e) => {
   }
   if (e.key === 'Escape' && screen === 'SHOP') { sm.onLeaveShop(); return; }
   if (e.key === 'Escape' && screen === 'PRACTICE') { sm.onLeavePractice(); return; }
+  if (e.key === 'Escape' && screen === 'SETTINGS') { sm.onCloseSettings(); return; }
 
   // Piano keyboard shortcuts (during battle, ignore held keys)
   if (screen === 'BATTLE' && !e.repeat) {
@@ -104,10 +106,14 @@ engine.addScene('shop',        new ShopScene(deps));
 engine.addScene('practice',    new PracticeScene(deps));
 engine.addScene('game_over',   new GameOverScene(deps));
 engine.addScene('victory',     new VictoryScene(deps));
+engine.addScene('settings',    new SettingsScene(deps));
 
 // ─── Start ────────────────────────────────────────────────────────────────────
 
-engine.start().then(() => engine.goToScene('title'));
+engine.start().then(() => {
+  engine.input.pointers.primary.once('down', () => { void synth.unlockContext(); });
+  engine.goToScene('title');
+});
 
 // Debug hook — exposes game internals for preview/testing
 declare global { interface Window { __game: { sm: StateMachine; audio: AudioEngine; synth: AudioSynth; engine: ex.Engine; startGame: () => void } } }

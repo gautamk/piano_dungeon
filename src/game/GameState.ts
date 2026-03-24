@@ -1,4 +1,28 @@
-import type { GameState, FeedbackMessage } from '../types.js';
+import type { GameState, FeedbackMessage, AppSettings } from '../types.js';
+
+const SETTINGS_KEY = 'pianoDungeonSettings';
+
+const DEFAULT_SETTINGS: AppSettings = {
+  micEnabled: true,
+  micDeviceId: null,
+  outputDeviceId: null,
+  micRebroadcast: false,
+  showPianoLabels: true,
+};
+
+export function loadSettings(): AppSettings {
+  try {
+    const raw = localStorage.getItem(SETTINGS_KEY);
+    if (!raw) return { ...DEFAULT_SETTINGS };
+    return { ...DEFAULT_SETTINGS, ...JSON.parse(raw) } as AppSettings;
+  } catch {
+    return { ...DEFAULT_SETTINGS };
+  }
+}
+
+export function saveSettings(s: AppSettings): void {
+  localStorage.setItem(SETTINGS_KEY, JSON.stringify(s));
+}
 
 /**
  * Single mutable store for all game state.
@@ -53,9 +77,12 @@ export function createGameState(): GameState {
     // Floating feedback messages (damage numbers, text popups)
     feedback: [], // [{ text, x, y, color, ttl, vy }]
 
-    // Mic device selection (used on title screen)
+    // Audio device lists (populated by AudioEngine after mic permission granted)
     micDevices: [],
+    outputDevices: [],
     micError: null,
+
+    settings: loadSettings(),
   };
 }
 

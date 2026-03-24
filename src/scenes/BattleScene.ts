@@ -13,12 +13,18 @@ export class BattleScene extends GameScene<BattleActivationData> {
 
   override onActivate(ctx: ex.SceneActivationContext<BattleActivationData>): void {
     super.onActivate(ctx);
+    void this.audio.resume();
     // Only init battle when arriving at BATTLE — not when transitioning to the
     // ROOM_CLEAR overlay (which shares this scene and never fires onActivate again).
     if (this.sm.state.screen === 'BATTLE') {
       this.sm.state.battle.isPractice = ctx.data?.isPractice ?? false;
       this.sm.startBattle();
     }
+  }
+
+  override onDeactivate(ctx: ex.SceneActivationContext<never>): void {
+    super.onDeactivate(ctx);
+    void this.audio.suspend();
   }
 
   renderFrame(): void {

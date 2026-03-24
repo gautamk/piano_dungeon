@@ -45,6 +45,7 @@ export function renderBattleScreen(renderer: Renderer, state: GameState): void {
     width: PIANO_LAYOUT.w,
     height: PIANO_LAYOUT.h,
     inputMode: audio.inputMode ?? 'none',
+    showLabels: state.settings.showPianoLabels,
   });
 
   // ── Floor indicator

@@ -7,7 +7,7 @@ export type BattlePhase = 'IDLE' | 'SHOWING' | 'WAITING' | 'RESULT';
 export type InputMode = 'mic' | 'none';
 export type Screen =
   | 'TITLE' | 'DUNGEON_MAP' | 'BATTLE' | 'ROOM_CLEAR'
-  | 'FLOOR_CLEAR' | 'SHOP' | 'GAME_OVER' | 'VICTORY' | 'PRACTICE';
+  | 'FLOOR_CLEAR' | 'SHOP' | 'GAME_OVER' | 'VICTORY' | 'PRACTICE' | 'SETTINGS';
 
 // ─── Music theory data ────────────────────────────────────────────────────────
 
@@ -242,6 +242,14 @@ export interface PracticeState {
   selectedSong: Song | null;
 }
 
+export interface AppSettings {
+  micEnabled: boolean;
+  micDeviceId: string | null;
+  outputDeviceId: string | null;
+  micRebroadcast: boolean;
+  showPianoLabels: boolean;
+}
+
 export interface GameState {
   screen: Screen;
   player: PlayerState;
@@ -251,7 +259,9 @@ export interface GameState {
   audio: AudioState;
   feedback: FeedbackMessage[];
   micDevices: MediaDeviceInfo[];
+  outputDevices: MediaDeviceInfo[];
   micError: string | null;
+  settings: AppSettings;
 }
 
 // ─── Config ───────────────────────────────────────────────────────────────────
@@ -305,7 +315,7 @@ export interface ColorPalette {
 // Passed as sceneActivationData when calling engine.goToScene().
 // Each scene's onActivate receives the matching payload via context.data.
 
-export interface TitleActivationData      { resetState: true }
+export interface TitleActivationData      { resetState: boolean }
 export interface DungeonMapActivationData { generateFloor: boolean }
 export interface BattleActivationData     { isPractice: boolean }
 export interface PracticeActivationData   { songs: Song[] }
@@ -313,12 +323,14 @@ export type ShopActivationData        = Record<string, never>;
 export type FloorClearActivationData  = Record<string, never>;
 export type GameOverActivationData    = Record<string, never>;
 export type VictoryActivationData     = Record<string, never>;
+export type SettingsActivationData    = Record<string, never>;
 
 export type SceneActivationData =
   | TitleActivationData | DungeonMapActivationData
   | BattleActivationData | PracticeActivationData
   | ShopActivationData | FloorClearActivationData
-  | GameOverActivationData | VictoryActivationData;
+  | GameOverActivationData | VictoryActivationData
+  | SettingsActivationData;
 
 // ─── Rendering ────────────────────────────────────────────────────────────────
 

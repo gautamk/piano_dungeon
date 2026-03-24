@@ -24,6 +24,7 @@ export const SCREEN_TO_SCENE: Record<Screen, string> = {
   PRACTICE:    'practice',
   GAME_OVER:   'game_over',
   VICTORY:     'victory',
+  SETTINGS:    'settings',
 };
 
 /**

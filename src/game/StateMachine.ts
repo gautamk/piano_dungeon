@@ -379,4 +379,8 @@ export class StateMachine {
   onLeaveShop(): void { this.go('DUNGEON_MAP', { generateFloor: false }); }
 
   onRestartGame(): void { this.go('TITLE', { resetState: true }); }
+
+  onOpenSettings(): void { this.go('SETTINGS', {}); }
+
+  onCloseSettings(): void { this.go('TITLE', { resetState: false }); }
 }

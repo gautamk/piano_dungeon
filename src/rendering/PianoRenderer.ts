@@ -65,6 +65,7 @@ export function renderPianoStrip(
     width,
     height,
     inputMode,
+    showLabels = true,
   }: {
     audioNote: DetectedNote | null;
     virtualNote: VirtualNote | null;
@@ -74,6 +75,7 @@ export function renderPianoStrip(
     width: number;
     height: number;
     inputMode: InputMode;
+    showLabels?: boolean;
   }
 ): void {
   const ctx = renderer.ctx;
@@ -104,8 +106,8 @@ export function renderPianoStrip(
       ctx.lineWidth = 0.5;
       ctx.strokeRect(keyX, y, whiteW - 1, height);
 
-      // Label: always show on highlighted and active keys; show C on all C keys as anchor
-      const showLabel = isHighlight || isActive || semitone === 0;
+      // Labels: when showLabels=true show all white keys; otherwise only C anchor + active + highlighted
+      const showLabel = showLabels || isHighlight || isActive || semitone === 0;
       if (showLabel) {
         ctx.fillStyle = isActive ? '#000' : isHighlight ? '#222' : '#777';
         ctx.font = `bold ${Math.floor(whiteW * 0.38)}px monospace`;

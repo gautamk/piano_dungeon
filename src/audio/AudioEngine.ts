@@ -16,9 +16,13 @@ export class AudioEngine {
   detector: PitchDetector | null;
   selectedDeviceId: string | null;
   devices: MediaDeviceInfo[];
+  outputDevices: MediaDeviceInfo[];
   inputMode: InputMode;
   currentNote: DetectedNote | null;
   rawFrequency: number | null;
+
+  private _rebroadcastDest: MediaStreamAudioDestinationNode | null;
+  private _rebroadcastAudio: HTMLAudioElement | null;
 
   constructor() {
     this.ctx = null;
@@ -28,15 +32,19 @@ export class AudioEngine {
     this.detector = null;
     this.selectedDeviceId = localStorage.getItem('pianoMicDeviceId') ?? null;
     this.devices = [];
+    this.outputDevices = [];
     this.inputMode = 'none';
 
     this.currentNote = null;
     this.rawFrequency = null;
+    this._rebroadcastDest = null;
+    this._rebroadcastAudio = null;
   }
 
   async loadDevices(): Promise<MediaDeviceInfo[]> {
     const all = await navigator.mediaDevices.enumerateDevices();
     this.devices = all.filter(d => d.kind === 'audioinput');
+    this.outputDevices = all.filter(d => d.kind === 'audiooutput');
     return this.devices;
   }
 
@@ -110,7 +118,75 @@ export class AudioEngine {
     }
   }
 
+  async suspend(): Promise<void> {
+    if (this.ctx && this.ctx.state === 'running') {
+      await this.ctx.suspend();
+    }
+  }
+
+  async resume(): Promise<void> {
+    if (this.ctx && this.ctx.state === 'suspended') {
+      await this.ctx.resume();
+    }
+  }
+
+  /** Route Tone.js output (and rebroadcast) to a specific speaker device (Chrome/Edge only). */
+  async setOutputDevice(_deviceId: string | null): Promise<void> {
+    // AudioEngine's input context doesn't route to speakers; this is a no-op here.
+    // AudioSynth.setOutputDevice handles speaker routing for Tone.js output.
+  }
+
+  /**
+   * Rebroadcast the mic input to a speaker output.
+   * Uses a MediaStreamDestinationNode to tap the mic signal, then plays it
+   * via an HTMLAudioElement routed to the chosen output device.
+   */
+  async setRebroadcast(enabled: boolean, outputDeviceId: string | null): Promise<void> {
+    if (enabled && this.source && this.ctx) {
+      // Tear down any existing rebroadcast first
+      if (this._rebroadcastAudio) {
+        this._rebroadcastAudio.pause();
+        this._rebroadcastAudio = null;
+      }
+      if (this._rebroadcastDest) {
+        this.source.disconnect(this._rebroadcastDest);
+        this._rebroadcastDest = null;
+      }
+
+      this._rebroadcastDest = this.ctx.createMediaStreamDestination();
+      this.source.connect(this._rebroadcastDest);
+
+      this._rebroadcastAudio = new Audio();
+      this._rebroadcastAudio.srcObject = this._rebroadcastDest.stream;
+
+      if (outputDeviceId && 'setSinkId' in HTMLAudioElement.prototype) {
+        try {
+          await (this._rebroadcastAudio as HTMLAudioElement & { setSinkId(id: string): Promise<void> }).setSinkId(outputDeviceId);
+        } catch { /* unsupported or permission denied */ }
+      }
+
+      try { await this._rebroadcastAudio.play(); } catch { /* autoplay policy */ }
+    } else {
+      if (this._rebroadcastAudio) {
+        this._rebroadcastAudio.pause();
+        this._rebroadcastAudio = null;
+      }
+      if (this._rebroadcastDest && this.source) {
+        this.source.disconnect(this._rebroadcastDest);
+        this._rebroadcastDest = null;
+      }
+    }
+  }
+
   stop(): void {
+    if (this._rebroadcastAudio) {
+      this._rebroadcastAudio.pause();
+      this._rebroadcastAudio = null;
+    }
+    if (this._rebroadcastDest && this.source) {
+      this.source.disconnect(this._rebroadcastDest);
+      this._rebroadcastDest = null;
+    }
     this.source?.disconnect();
     this.stream?.getTracks().forEach(t => t.stop());
     this.ctx?.close();
