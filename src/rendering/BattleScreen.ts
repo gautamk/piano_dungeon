@@ -1,7 +1,6 @@
 import type { GameState, Challenge, Enemy, PlayerState } from '../types.js';
 import { COLORS, GAME_CONFIG, PIANO_LAYOUT, CHALLENGE_TYPE_COLORS } from '../config.js';
 import { NOTE_NAMES } from '../data/music.js';
-import { renderPianoStrip } from './PianoRenderer.js';
 import type { Renderer } from './Renderer.js';
 
 export { PIANO_LAYOUT } from '../config.js';
@@ -36,20 +35,7 @@ export function renderBattleScreen(renderer: Renderer, state: GameState): void {
     renderMelodyRoll(renderer, challenge);
   }
 
-  // ── Piano strip (bottom)
-  renderPianoStrip(renderer, {
-    audioNote: audio.note,
-    virtualNote: audio.virtualNote ?? null,
-    challenge,
-    x: PIANO_LAYOUT.x,
-    y: PIANO_LAYOUT.y,
-    width: PIANO_LAYOUT.w,
-    height: PIANO_LAYOUT.h,
-    inputMode: audio.inputMode ?? 'none',
-    showLabels: state.settings.showPianoLabels,
-    wrongSemitone: lastWrongSemitone,
-    correctSemitone: lastCorrectSemitone,
-  });
+  // Piano strip rendered as Excalibur actor in BattleScene (xs2)
 
   // ── Floor indicator
   renderer.text(`Floor ${player.floor}`, W / 2, 18, {
@@ -64,19 +50,11 @@ function renderEnemyPanel(renderer: Renderer, enemy: Enemy, combo: number): void
   renderer.rect(x, y, w, h, COLORS.surface, 8);
   renderer.rectStroke(x, y, w, h, COLORS.border, 1, 8);
 
-  // Enemy emoji/sprite
-  const ctx = renderer.ctx;
-  ctx.font = '64px serif';
-  ctx.textAlign = 'left';
-  ctx.textBaseline = 'top';
-  ctx.fillText(enemy.emoji || '👾', x + 16, y + 16);
-
   // Enemy name
   renderer.text(enemy.name, x + 100, y + 30, { size: 18, color: COLORS.text, weight: 'bold' });
 
-  // Enemy HP bar
+  // Enemy HP bar label + numbers (bar fill/bg rendered as Excalibur actors in BattleScene)
   renderer.text('HP', x + 100, y + 58, { size: 12, color: COLORS.textDim });
-  renderer.bar(x + 100, y + 70, w - 120, 16, enemy.currentHp, enemy.maxHp, COLORS.hp);
   renderer.text(`${enemy.currentHp} / ${enemy.maxHp}`, x + 100, y + 95, { size: 11, color: COLORS.textDim });
 
   // Combo indicator
@@ -146,10 +124,7 @@ function renderChallengeArea(
   renderer.rect(cx - 50, areaY - 14, 100, 26, CHALLENGE_TYPE_COLORS[challenge.type] || COLORS.accent, 13);
   renderer.text(challenge.type, cx, areaY, { size: 12, color: '#fff', align: 'center', weight: 'bold' });
 
-  // Main label (the challenge description)
-  renderer.text(challenge.label, cx, areaY + 55, {
-    size: 28, color: COLORS.text, align: 'center', weight: 'bold',
-  });
+  // Challenge label rendered as Excalibur actor in BattleScene
 
   // Hint / note sequence
   if (challenge.hint) {

@@ -44,8 +44,9 @@ export function renderDungeonScreen(renderer: Renderer, state: GameState): void 
   // ── Player stats row
   renderStatsRow(renderer, state);
 
-  // ── Rooms
-  renderRooms(renderer, rooms);
+  // Room tiles rendered as Excalibur actors in DungeonMapScene (zkr)
+  // Connector lines remain on canvas
+  renderRoomConnectors(renderer, rooms);
 
   // ── Instructions
   renderer.centeredText('Click a room to enter', H - 30, { size: 13, color: COLORS.textDim });
@@ -59,7 +60,7 @@ function renderStatsRow(renderer: Renderer, state: GameState): void {
 }
 
 /** Shared room layout geometry — used by both rendering and hit testing. */
-function roomLayout(rooms: Room[]): { roomW: number; roomH: number; gap: number; startX: number; centerY: number } {
+export function roomLayout(rooms: Room[]): { roomW: number; roomH: number; gap: number; startX: number; centerY: number } {
   const roomW = 90, roomH = 90, gap = 30;
   const totalW = rooms.length * (roomW + gap) - gap;
   const startX = Math.max(40, (W - totalW) / 2);
@@ -67,24 +68,14 @@ function roomLayout(rooms: Room[]): { roomW: number; roomH: number; gap: number;
   return { roomW, roomH, gap, startX, centerY };
 }
 
-function renderRooms(renderer: Renderer, rooms: Room[]): void {
-  if (!rooms.length) return;
-
-  const { roomW, roomH, gap, startX, centerY } = roomLayout(rooms);
-
-  // Draw connector lines first
+function renderRoomConnectors(renderer: Renderer, rooms: Room[]): void {
+  if (rooms.length < 2) return;
+  const { roomW, roomH: _roomH, gap, startX, centerY } = roomLayout(rooms);
   for (let i = 0; i < rooms.length - 1; i++) {
     const x1 = startX + i * (roomW + gap) + roomW;
     const x2 = startX + (i + 1) * (roomW + gap);
     const lineColor = rooms[i + 1].reachable ? COLORS.border : '#1a1a2e';
     renderer.line(x1, centerY, x2, centerY, lineColor, 2);
-  }
-
-  // Draw rooms
-  for (let i = 0; i < rooms.length; i++) {
-    const rx = startX + i * (roomW + gap);
-    const ry = centerY - roomH / 2;
-    renderRoom(renderer, rooms[i], rx, ry, roomW, roomH);
   }
 }
 
