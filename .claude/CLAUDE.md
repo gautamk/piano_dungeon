@@ -18,7 +18,7 @@ Commands: `bd create`, `bd list`, `bd close`, `bd comments add`, `bd edit`
 ## Architecture
 ```
 src/
-├── main.ts              # Entry: game loop, input, render dispatch (Excalibur LegacyScene bridge)
+├── main.ts              # Entry: Excalibur engine setup, keyboard input, scene registration
 ├── types.ts             # Central shared interfaces — all game types defined here
 ├── config.ts            # Constants (GAME_CONFIG, COLORS) — change values here first
 ├── audio/
@@ -88,11 +88,13 @@ src/
 - Project uses **Bun** (not Node.js) — use `bun` for all scripts and package management
 - `bun test` runs vitest; `bun scripts/midi-to-songs.js` runs the MIDI converter
 
-### Excalibur + Legacy Bridge
-- `main.ts` creates `ex.Engine({ canvasElementId: 'game', displayMode: FitScreen })` and wires up `LegacyScene` + `LegacyActor`
-- `LegacyActor.onPreUpdate(deltaMs)` runs the game tick (`audio.tick()`, `sm.tick()`); an `ex.Canvas` graphic (offscreen, `cache: false`) swaps `renderer.ctx` each frame and calls the legacy `render()` dispatcher
-- Excalibur uses WebGL by default — **do not** pass `engine.canvas` to `new Renderer()`; use a detached dummy canvas instead (ctx is replaced per frame)
-- New game screens should be proper Excalibur Scenes. Legacy screens remain in `LegacyScene` until their migration bead.
+### Excalibur Scene Architecture
+- All 8 screens are proper Excalibur Scenes extending `GameScene` (`src/scenes/GameScene.ts`)
+- `GameScene` creates a full-screen `ex.Canvas` actor; the `draw(ctx)` callback swaps `renderer.ctx` each frame and calls `renderFrame()`
+- `GameScene.onPreUpdate` runs `audio.tick()` + `sm.tick(elapsed)` each frame
+- `GameScene.onActivate` registers the canvas click listener; `onDeactivate` removes it and clears the SM transition callback
+- Excalibur uses WebGL by default — **do not** pass `engine.canvas` to `new Renderer()`; always init Renderer with `document.createElement('canvas')` (ctx is replaced per frame)
+- Adding a new screen: create a new class in `src/scenes/` extending `GameScene`, implement `renderFrame()` + `handleClick()`, register in `main.ts`, add to `SCREEN_TO_SCENE` map in `GameScene.ts`
 
 ### Git
 - Commit working game states only — the game loop must run without errors
