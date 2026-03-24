@@ -26,8 +26,10 @@ const OUTPUT_HEADER_Y = MIC_DROPDOWN_Y + DROPDOWN_H + 30;  // 296
 const OUTPUT_DROPDOWN_Y = OUTPUT_HEADER_Y + 44;             // 340
 const REBROADCAST_Y = OUTPUT_DROPDOWN_Y + DROPDOWN_H + 20; // 396
 const DISPLAY_Y = REBROADCAST_Y + TOGGLE_H + 60;           // 488
+const MIDI_HEADER_Y = DISPLAY_Y + 110;                      // 598 (only shown when MIDI devices present)
+const MIDI_DROPDOWN_Y = MIDI_HEADER_Y + 44;                 // 642
 
-export type OpenDropdown = 'mic' | 'output' | null;
+export type OpenDropdown = 'mic' | 'output' | 'midi' | null;
 
 export interface SettingsHitRegions {
   close: HitRegion;
@@ -38,12 +40,15 @@ export interface SettingsHitRegions {
   outputDeviceItems: Array<HitRegion & { deviceId: string }>;
   rebroadcastToggle: HitRegion;
   showLabelsToggle: HitRegion;
+  midiDropdownHeader: HitRegion | null;
+  midiDeviceItems: Array<HitRegion & { deviceId: string }>;
 }
 
 // ─── Content height ───────────────────────────────────────────────────────────
 
-export function getSettingsContentHeight(_state: GameState): number {
-  return DISPLAY_Y + 90; // fixed — no longer depends on device count
+export function getSettingsContentHeight(state: GameState): number {
+  if (state.midiDevices.length > 0) return MIDI_DROPDOWN_Y + DROPDOWN_H + 20;
+  return DISPLAY_Y + 90;
 }
 
 // ─── Hit region builder ──────────────────────────────────────────────────────
@@ -80,6 +85,17 @@ export function getSettingsHitRegions(
     }
   }
 
+  const midiDeviceItems: Array<HitRegion & { deviceId: string }> = [];
+  if (openDropdown === 'midi') {
+    const startY = s(MIDI_DROPDOWN_Y) + DROPDOWN_H;
+    for (let i = 0; i < state.midiDevices.length; i++) {
+      midiDeviceItems.push({
+        x: LIST_X, y: startY + i * ROW_H, w: LIST_W, h: ROW_H - 2,
+        deviceId: state.midiDevices[i].id,
+      });
+    }
+  }
+
   return {
     close: { x: CLOSE_X, y: CLOSE_Y, w: CLOSE_W, h: CLOSE_H },
     micEnabledToggle: { x: TOGGLE_X, y: s(148), w: TOGGLE_W, h: TOGGLE_H },
@@ -89,6 +105,10 @@ export function getSettingsHitRegions(
     outputDeviceItems,
     rebroadcastToggle: { x: TOGGLE_X, y: s(REBROADCAST_Y), w: TOGGLE_W, h: TOGGLE_H },
     showLabelsToggle: { x: TOGGLE_X, y: s(DISPLAY_Y + 20), w: TOGGLE_W, h: TOGGLE_H },
+    midiDropdownHeader: state.midiDevices.length > 0
+      ? { x: LIST_X, y: s(MIDI_DROPDOWN_Y), w: LIST_W, h: DROPDOWN_H }
+      : null,
+    midiDeviceItems,
   };
 }
 
@@ -157,6 +177,16 @@ export function renderSettingsScreen(
     { size: 11, color: COLORS.textDim, align: 'center' },
   );
 
+  // MIDI INPUT (only rendered when MIDI devices are available)
+  if (state.midiDevices.length > 0) {
+    _sectionHeader(renderer, 'MIDI INPUT', MIDI_HEADER_Y);
+    renderer.text('MIDI device', LABEL_X, MIDI_HEADER_Y + 26, { size: 14, color: COLORS.text });
+    renderer.text('(USB/Bluetooth MIDI keyboard)', LABEL_X, MIDI_HEADER_Y + 42, { size: 11, color: COLORS.textDim });
+    const selectedMidi = state.midiDevices.find(d => d.id === (settings.midiDeviceId ?? ''))?.name
+      ?? state.midiDevices[0]?.name ?? '—';
+    _drawDropdownHeader(ctx, selectedMidi, MIDI_DROPDOWN_Y, openDropdown === 'midi');
+  }
+
   ctx.restore();
 
   // ── Dropdown overlays (drawn after clip restore, floats above all content) ──
@@ -166,6 +196,14 @@ export function renderSettingsScreen(
   }
   if (openDropdown === 'output') {
     _drawDropdownItems(ctx, outputDevices, settings.outputDeviceId ?? '', OUTPUT_DROPDOWN_Y - scrollY + DROPDOWN_H);
+  }
+  if (openDropdown === 'midi' && state.midiDevices.length > 0) {
+    _drawDropdownItems(
+      ctx,
+      state.midiDevices.map(d => ({ deviceId: d.id, label: d.name })),
+      settings.midiDeviceId ?? '',
+      MIDI_DROPDOWN_Y - scrollY + DROPDOWN_H,
+    );
   }
 }
 

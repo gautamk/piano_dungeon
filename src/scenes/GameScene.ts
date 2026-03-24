@@ -3,12 +3,14 @@ import type { Screen, SceneActivationData } from '../types.js';
 import type { StateMachine } from '../game/StateMachine.js';
 import type { AudioEngine } from '../audio/AudioEngine.js';
 import type { AudioSynth } from '../audio/AudioSynth.js';
+import type { MidiEngine } from '../audio/MidiEngine.js';
 import type { Renderer } from '../rendering/Renderer.js';
 
 export interface SceneDeps {
   sm: StateMachine;
   audio: AudioEngine;
   synth: AudioSynth;
+  midi: MidiEngine;
   renderer: Renderer;
 }
 
@@ -40,18 +42,21 @@ export abstract class GameScene<TData = SceneActivationData> extends ex.Scene<TD
   protected sm: StateMachine;
   protected audio: AudioEngine;
   protected synth: AudioSynth;
+  protected midi: MidiEngine;
   protected renderer: Renderer;
 
   /** Screen names this scene is responsible for. */
   abstract readonly screens: Screen[];
 
   private _boundPointerUp?: (e: ex.PointerEvent) => void;
+  private _frameBuf: number[] = [];
 
   constructor(deps: SceneDeps) {
     super();
     this.sm       = deps.sm;
     this.audio    = deps.audio;
     this.synth    = deps.synth;
+    this.midi     = deps.midi;
     this.renderer = deps.renderer;
   }
 
@@ -93,6 +98,13 @@ export abstract class GameScene<TData = SceneActivationData> extends ex.Scene<TD
   override onPreUpdate(_engine: ex.Engine, elapsed: number): void {
     this.audio.tick();
     this.sm.tick(elapsed);
+
+    // Rolling 60-frame FPS / frame-time tracker
+    this._frameBuf.push(elapsed);
+    if (this._frameBuf.length > 60) this._frameBuf.shift();
+    const avg = this._frameBuf.reduce((a, b) => a + b, 0) / this._frameBuf.length;
+    this.sm.state.perf.frameMs = Math.round(avg * 10) / 10;
+    this.sm.state.perf.fps = Math.round(1000 / avg);
   }
 
   /** Called each frame; subclasses render their screen here. */

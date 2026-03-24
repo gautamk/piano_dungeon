@@ -9,6 +9,7 @@ const DEFAULT_SETTINGS: AppSettings = {
   outputDeviceId: null,
   micRebroadcast: false,
   showPianoLabels: true,
+  midiDeviceId: null,
 };
 
 export function loadSettings(): AppSettings {
@@ -112,6 +113,10 @@ export function createGameState(): GameState {
     micDevices: [],
     outputDevices: [],
     micError: null,
+    midiDevices: [],
+    midiConnected: false,
+    audioSuspended: false,
+    perf: { fps: 0, frameMs: 0, showDebug: false },
 
     settings: loadSettings(),
     loadingProgress: null,

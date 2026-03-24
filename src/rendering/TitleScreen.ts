@@ -38,6 +38,13 @@ export function renderTitleScreen(renderer: Renderer, state: GameState): void {
   const modeColor = state.audio?.inputMode === 'mic' ? COLORS.success : COLORS.accent;
   renderer.centeredText(modeLabel, H / 2 + 175, { size: 13, color: modeColor });
 
+  // MIDI badge (shown when a MIDI device is connected)
+  if (state.midiConnected && state.midiDevices.length > 0) {
+    const midiName = state.midiDevices.find(d => d.id === state.settings.midiDeviceId)?.name
+      ?? state.midiDevices[0]?.name ?? 'MIDI device';
+    renderer.centeredText(`🎵 MIDI: ${midiName}`, H / 2 + 193, { size: 12, color: COLORS.success });
+  }
+
   // Error (soft warning, not blocking)
   if (state.micError) {
     renderer.centeredText(`ℹ ${state.micError}`, H / 2 + 198, { size: 12, color: COLORS.warning });

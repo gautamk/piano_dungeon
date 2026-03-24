@@ -42,6 +42,21 @@ export function renderBattleScreen(renderer: Renderer, state: GameState): void {
     size: 14, color: COLORS.textDim, align: 'center',
   });
 
+  // ── Audio suspended banner (shown when browser pauses AudioContext)
+  if (state.audioSuspended) {
+    renderer.rect(0, 0, W, 28, COLORS.warning + '33');
+    renderer.centeredText('⏸  Audio paused — click anywhere to resume', 18, {
+      size: 12, color: COLORS.warning,
+    });
+  }
+
+  // ── Perf debug overlay (toggle with P key)
+  if (state.perf.showDebug) {
+    const label = `FPS: ${state.perf.fps}  Frame: ${state.perf.frameMs}ms`;
+    renderer.rect(W - 160, 4, 154, 22, COLORS.surface + 'cc', 4);
+    renderer.text(label, W - 83, 18, { size: 12, color: COLORS.textDim, align: 'center' });
+  }
+
   // ── Screen flash overlay (success/fail FX)
   if (battle.screenFlash) {
     const alpha = battle.screenFlash.ttl / battle.screenFlash.maxTtl;

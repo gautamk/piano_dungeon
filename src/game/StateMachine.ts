@@ -21,12 +21,14 @@ import { NOTE_NAMES } from '../data/music.js';
 import { SONGS, SONGS_LIST } from '../data/songs.js';
 import type { AudioEngine } from '../audio/AudioEngine.js';
 import type { AudioSynth } from '../audio/AudioSynth.js';
+import type { MidiEngine } from '../audio/MidiEngine.js';
 
 const RESULT_SHOW_MS = 900;
 
 export class StateMachine {
   audio: AudioEngine;
   synth: AudioSynth | null;
+  midi: MidiEngine | null;
   state: GameState;
 
   // FIFO queue of virtual notes (set by triggerVirtualNote, drained one-per-tick)
@@ -45,9 +47,10 @@ export class StateMachine {
   // Cleared on scene deactivate to avoid stale references between scenes.
   private _transitionCallback: ((screen: Screen, data: SceneActivationData) => void) | null = null;
 
-  constructor(audioEngine: AudioEngine, audioSynth: AudioSynth | null) {
+  constructor(audioEngine: AudioEngine, audioSynth: AudioSynth | null, midiEngine: MidiEngine | null = null) {
     this.audio = audioEngine;
     this.synth = audioSynth ?? null;
+    this.midi = midiEngine;
     this.state = createGameState();
 
     this._virtualNoteQueue = [];
@@ -82,6 +85,8 @@ export class StateMachine {
     this.state.audio.note = this.audio.currentNote;
     this.state.audio.rawFreq = this.audio.rawFrequency;
     this.state.audio.inputMode = this.audio.inputMode;
+    this.state.audioSuspended = this.audio.contextSuspended;
+    if (this.midi) this.state.midiConnected = this.midi.connected;
 
     tickFeedback(this.state, deltaMs);
     tickBattleFx(this.state, deltaMs);

@@ -18,6 +18,21 @@ export class TitleScene extends GameScene<TitleActivationData> {
     this.sm.state.micDevices = this.audio.devices;
     this.sm.state.outputDevices = this.audio.outputDevices;
     this.sm.state.audio.inputMode = this.audio.inputMode;
+
+    // Request MIDI access and auto-connect to saved device preference
+    void this.midi.requestAccess().then((ok) => {
+      if (!ok) return;
+      this.sm.state.midiDevices = this.midi.devices;
+      const { midiDeviceId } = this.sm.state.settings;
+      if (midiDeviceId) {
+        this.midi.start(midiDeviceId);
+      } else if (this.midi.devices.length > 0) {
+        // Auto-connect to the first available MIDI device
+        this.midi.start();
+        this.sm.state.settings.midiDeviceId = this.midi.devices[0]?.id ?? null;
+      }
+      this.sm.state.midiConnected = this.midi.connected;
+    });
   }
 
   renderFrame(): void {

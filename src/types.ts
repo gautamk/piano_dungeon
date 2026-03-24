@@ -260,6 +260,7 @@ export interface AppSettings {
   outputDeviceId: string | null;
   micRebroadcast: boolean;
   showPianoLabels: boolean;
+  midiDeviceId: string | null;
 }
 
 /** Persisted to localStorage so a run survives a browser refresh. */
@@ -281,6 +282,12 @@ export interface GameState {
   micDevices: MediaDeviceInfo[];
   outputDevices: MediaDeviceInfo[];
   micError: string | null;
+  midiDevices: { id: string; name: string }[];
+  midiConnected: boolean;
+  /** True when the browser has suspended the AudioContext (e.g. tab backgrounded). */
+  audioSuspended: boolean;
+  /** Frame performance metrics. showDebug toggled by P key. */
+  perf: { fps: number; frameMs: number; showDebug: boolean };
   settings: AppSettings;
   /** Non-null (0–100) while async audio init is in progress on the title screen. */
   loadingProgress: number | null;

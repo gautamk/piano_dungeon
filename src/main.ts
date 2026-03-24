@@ -1,6 +1,7 @@
 import * as ex from 'excalibur';
 import { AudioEngine } from './audio/AudioEngine.js';
 import { AudioSynth } from './audio/AudioSynth.js';
+import { MidiEngine } from './audio/MidiEngine.js';
 import { StateMachine } from './game/StateMachine.js';
 import { Renderer } from './rendering/Renderer.js';
 import { TitleScene } from './scenes/TitleScene.js';
@@ -28,7 +29,8 @@ const engine = new ex.Engine({
 
 const audio = new AudioEngine();
 const synth = new AudioSynth();
-const sm = new StateMachine(audio, synth);
+const midi = new MidiEngine();
+const sm = new StateMachine(audio, synth, midi);
 // Excalibur uses WebGL by default; getContext('2d') on engine.canvas returns null.
 // Use a detached canvas for Renderer init — ctx gets swapped to ex.Canvas offscreen ctx each frame.
 const _dummyCanvas = document.createElement('canvas');
@@ -64,7 +66,7 @@ const KEY_NOTE_MAP = {
 
 // ─── Scenes ───────────────────────────────────────────────────────────────────
 
-const deps = { sm, audio, synth, renderer };
+const deps = { sm, audio, synth, midi, renderer };
 
 engine.addScene('title',       new TitleScene(deps));
 engine.addScene('dungeon_map', new DungeonMapScene(deps));
@@ -81,6 +83,9 @@ engine.addScene('settings',    new SettingsScene(deps));
 engine.start().then(() => {
   engine.input.pointers.primary.once('down', () => { void synth.unlockContext(); });
 
+  // Route MIDI note-on events through the virtual note pipeline
+  midi.onNote((s, o) => sm.triggerVirtualNote(s, o));
+
   engine.input.keyboard.on('press', (evt) => {
     const screen = sm.state.screen;
 
@@ -96,6 +101,12 @@ engine.start().then(() => {
       if (screen === 'SETTINGS') { sm.onCloseSettings(); return; }
     }
 
+    // Toggle perf debug overlay (any screen)
+    if (evt.key === ex.Keys.P) {
+      sm.state.perf.showDebug = !sm.state.perf.showDebug;
+      return;
+    }
+
     // Piano keyboard shortcuts (battle only) — evt.value is ev.key e.g. 'a', 's'
     if (screen === 'BATTLE') {
       const key = evt.value?.toLowerCase() ?? '';
@@ -108,5 +119,5 @@ engine.start().then(() => {
 });
 
 // Debug hook — exposes game internals for preview/testing
-declare global { interface Window { __game: { sm: StateMachine; audio: AudioEngine; synth: AudioSynth; engine: ex.Engine; startGame: () => void } } }
-window.__game = { sm, audio, synth, engine, startGame: () => sm.onStartGame() };
+declare global { interface Window { __game: { sm: StateMachine; audio: AudioEngine; synth: AudioSynth; midi: MidiEngine; engine: ex.Engine; startGame: () => void } } }
+window.__game = { sm, audio, synth, midi, engine, startGame: () => sm.onStartGame() };

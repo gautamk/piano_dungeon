@@ -87,6 +87,13 @@ export class AudioEngine {
     this.ctx = new AudioContext();
     if (this.ctx.state === 'suspended') await this.ctx.resume();
 
+    // Auto-resume if the browser suspends the context (e.g. tab backgrounded).
+    // ctx.resume() is a no-op if already running; the browser queues it until
+    // the next user gesture when called while still suspended.
+    this.ctx.onstatechange = () => {
+      if (this.ctx?.state === 'suspended') void this.ctx.resume();
+    };
+
     this.analyser = this.ctx.createAnalyser();
     this.analyser.fftSize = GAME_CONFIG.audio.fftSize;
     this.analyser.smoothingTimeConstant = 0.0;
@@ -103,6 +110,8 @@ export class AudioEngine {
 
   tick(): void {
     if (!this.detector) return;
+    // Redundant resume guard — catches cases where onstatechange fires late
+    if (this.ctx?.state === 'suspended') void this.ctx.resume();
 
     const result = this.detector.detect();
 
@@ -201,5 +210,10 @@ export class AudioEngine {
 
   get isRunning(): boolean {
     return this.ctx !== null && this.ctx.state === 'running';
+  }
+
+  /** True when the AudioContext exists but is currently suspended by the browser. */
+  get contextSuspended(): boolean {
+    return this.ctx !== null && this.ctx.state === 'suspended';
   }
 }
