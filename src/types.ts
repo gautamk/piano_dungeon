@@ -228,6 +228,12 @@ export interface BattleState {
   consecutiveWrong: number;
   isPractice: boolean;
   melodyChallengePhrase: number;
+  /** Music theory teaching card shown after FAIL. Cleared on next challenge. */
+  failTooltip: string | null;
+  /** Semitone the player actually played on FAIL (for red key highlight). */
+  lastWrongSemitone: number | null;
+  /** Semitone the player should have played on FAIL (for green key highlight). */
+  lastCorrectSemitone: number | null;
 }
 
 export interface AudioState {

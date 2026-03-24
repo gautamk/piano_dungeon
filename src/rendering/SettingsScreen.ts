@@ -18,6 +18,30 @@ const CLOSE_H = 36;
 const CLOSE_X = 1280 - PAD_X - CLOSE_W;
 const CLOSE_Y = 30;
 
+// ─── Section Y helpers (shared by render + hit regions) ──────────────────────
+//
+// micDisplayCount = state.micDevices.length + 1  (real devices + virtual Default row)
+
+// AUDIO OUTPUT section header sits 30px below the last displayed mic device row.
+function _outputHeaderY(micDisplayCount: number): number {
+  return 230 + micDisplayCount * ROW_H + 30;
+}
+
+// Device list starts 44px below the section header (room for header line + label).
+function _outputListY(micDisplayCount: number): number {
+  return _outputHeaderY(micDisplayCount) + 44;
+}
+
+// Rebroadcast toggle sits 20px below the last output device row.
+function _rebroadcastToggleY(micDisplayCount: number, outputCount: number): number {
+  return _outputListY(micDisplayCount) + outputCount * ROW_H + 20;
+}
+
+// DISPLAY section header sits 60px below the bottom of the rebroadcast toggle.
+function _displayHeaderY(micDisplayCount: number, outputCount: number): number {
+  return _rebroadcastToggleY(micDisplayCount, outputCount) + TOGGLE_H + 60;
+}
+
 export interface SettingsHitRegions {
   close: HitRegion;
   micEnabledToggle: HitRegion;
@@ -33,23 +57,26 @@ export function getSettingsHitRegions(state: GameState): SettingsHitRegions {
   const micDeviceItems: Array<HitRegion & { deviceId: string }> = [];
   const outputDeviceItems: Array<HitRegion & { deviceId: string }> = [];
 
-  // Mic device list starts at y=230
+  // Mic device list: virtual Default row first, then real devices
   let y = 230;
+  micDeviceItems.push({ x: LIST_X, y, w: LIST_W, h: ROW_H - 2, deviceId: '' }); // Default
+  y += ROW_H;
   for (const d of state.micDevices) {
     micDeviceItems.push({ x: LIST_X, y, w: LIST_W, h: ROW_H - 2, deviceId: d.deviceId });
     y += ROW_H;
   }
 
-  // Output device list: start after mic section + OUTPUT header
-  const outputListY = _outputSectionY(state.micDevices.length);
-  y = outputListY;
+  // Output device list starts after the section header + label.
+  // micDisplayCount = real devices + 1 for Default row.
+  const outputListStart = _outputListY(state.micDevices.length + 1);
+  y = outputListStart;
   for (const d of state.outputDevices) {
     outputDeviceItems.push({ x: LIST_X, y, w: LIST_W, h: ROW_H - 2, deviceId: d.deviceId });
     y += ROW_H;
   }
 
-  const rebroadcastY = outputListY + state.outputDevices.length * ROW_H + 20;
-  const displayY = _displaySectionY(state.micDevices.length, state.outputDevices.length);
+  const rebroadcastY = _rebroadcastToggleY(state.micDevices.length + 1, state.outputDevices.length);
+  const displayY = _displayHeaderY(state.micDevices.length + 1, state.outputDevices.length);
 
   return {
     close: { x: CLOSE_X, y: CLOSE_Y, w: CLOSE_W, h: CLOSE_H },
@@ -86,29 +113,35 @@ export function renderSettingsScreen(renderer: Renderer, state: GameState): void
   _drawToggle(renderer, TOGGLE_X, 148, settings.micEnabled);
 
   renderer.text('Microphone device', LABEL_X, 210, { size: 14, color: COLORS.text });
-  _drawDeviceList(ctx, micDevices, settings.micDeviceId, 230);
+  // Prepend a virtual Default row so the user can revert to system default.
+  const micDisplayList = [{ deviceId: '', label: 'Default (system)' }, ...micDevices];
+  _drawDeviceList(ctx, micDisplayList, settings.micDeviceId ?? '', 230);
 
   // ── AUDIO OUTPUT ─────────────────────────────────────────────────────────
 
-  const outputY = _outputSectionY(micDevices.length);
-  _sectionHeader(renderer, 'AUDIO OUTPUT', outputY - 30);
+  // micDevices.length + 1 accounts for the virtual Default row above.
+  const outputHeaderY = _outputHeaderY(micDevices.length + 1);
+  const outputListStart = _outputListY(micDevices.length);
 
-  renderer.text('Speaker output', LABEL_X, outputY + 16, { size: 14, color: COLORS.text });
-  _drawDeviceList(ctx, outputDevices, settings.outputDeviceId, outputY);
+  _sectionHeader(renderer, 'AUDIO OUTPUT', outputHeaderY);
+  // "Speaker output" label sits between section header and device list
+  renderer.text('Speaker output', LABEL_X, outputHeaderY + 26, { size: 14, color: COLORS.text });
+  _drawDeviceList(ctx, outputDevices, settings.outputDeviceId ?? '', outputListStart);
 
-  const rebroadcastLabelY = outputY + outputDevices.length * ROW_H + 36;
-  renderer.text('Mic rebroadcast to speaker', LABEL_X, rebroadcastLabelY, {
+  // Rebroadcast row: label baseline aligned with toggle centre (+16)
+  const rebroadcastY = _rebroadcastToggleY(micDevices.length + 1, outputDevices.length);
+  _drawToggle(renderer, TOGGLE_X, rebroadcastY, settings.micRebroadcast);
+  renderer.text('Mic rebroadcast to speaker', LABEL_X, rebroadcastY + 14, {
     size: 14, color: COLORS.text,
   });
-  renderer.text('(Plays mic input through selected speaker)', LABEL_X, rebroadcastLabelY + 18, {
+  renderer.text('(Plays mic input through selected speaker)', LABEL_X, rebroadcastY + 30, {
     size: 11, color: COLORS.textDim,
   });
-  _drawToggle(renderer, TOGGLE_X, outputY + outputDevices.length * ROW_H + 20, settings.micRebroadcast);
 
   // ── DISPLAY ──────────────────────────────────────────────────────────────
 
-  const displayY = _displaySectionY(micDevices.length, outputDevices.length);
-  _sectionHeader(renderer, 'DISPLAY', displayY - 15);
+  const displayY = _displayHeaderY(micDevices.length + 1, outputDevices.length);
+  _sectionHeader(renderer, 'DISPLAY', displayY);
 
   renderer.text('Show piano key labels', LABEL_X, displayY + 36, { size: 14, color: COLORS.text });
   renderer.text('(Show note names on all white keys)', LABEL_X, displayY + 54, {
@@ -126,14 +159,6 @@ export function renderSettingsScreen(renderer: Renderer, state: GameState): void
 }
 
 // ─── Helpers ─────────────────────────────────────────────────────────────────
-
-function _outputSectionY(micCount: number): number {
-  return 230 + micCount * ROW_H + 60;
-}
-
-function _displaySectionY(micCount: number, outputCount: number): number {
-  return _outputSectionY(micCount) + outputCount * ROW_H + 80;
-}
 
 function _sectionHeader(renderer: Renderer, label: string, y: number): void {
   renderer.text(label, SECTION_X, y, {
@@ -170,8 +195,8 @@ function _drawToggle(renderer: Renderer, x: number, y: number, on: boolean): voi
 
 function _drawDeviceList(
   ctx: CanvasRenderingContext2D,
-  devices: MediaDeviceInfo[],
-  selectedId: string | null,
+  devices: ReadonlyArray<{ deviceId: string; label: string }>,
+  selectedId: string,
   startY: number,
 ): void {
   if (devices.length === 0) {

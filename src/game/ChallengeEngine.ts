@@ -4,7 +4,7 @@ import type {
   Enemy, GameState, Song,
 } from '../types.js';
 import { GAME_CONFIG } from '../config.js';
-import { NOTE_NAMES, SCALES, CHORDS, CHALLENGE_ROOTS, getAvailableIntervals } from '../data/music.js';
+import { NOTE_NAMES, SCALES, CHORDS, CHALLENGE_ROOTS, INTERVALS, getAvailableIntervals } from '../data/music.js';
 import { semitoneMatches } from '../audio/NoteMapper.js';
 
 export const CHALLENGE_TYPE = {
@@ -208,6 +208,37 @@ export function evaluateNote(
   }
 
   return null;
+}
+
+/**
+ * Build a short 1–2 line teaching card to show after a FAIL result.
+ * Content is derived from the challenge object itself — no extra state needed.
+ */
+export function getTheoryTooltip(challenge: Challenge): string {
+  switch (challenge.type) {
+    case 'NOTE': {
+      const name = NOTE_NAMES[challenge.sequence[0]];
+      return `Look for ${name} highlighted in green on the piano. It may be in either octave.`;
+    }
+    case 'INTERVAL': {
+      // label = "[root]  →  [interval name]"
+      const [, intervalName] = challenge.label.split('  →  ');
+      const interval = INTERVALS.find(i => i.name === intervalName?.trim());
+      const semitones = interval ? `${interval.semitones} semitone${interval.semitones !== 1 ? 's' : ''} (${interval.abbr})` : '';
+      return `${intervalName?.trim() ?? 'This interval'} is ${semitones} above the root. ${challenge.hint ?? ''}`;
+    }
+    case 'SCALE': {
+      const scaleDef = Object.values(SCALES).find(s => challenge.label.includes(s.name));
+      const desc = scaleDef ? scaleDef.description : 'Play each note in order';
+      return `${desc}. Notes in order: ${challenge.hint ?? ''}`;
+    }
+    case 'CHORD': {
+      const notes = challenge.hint?.replace('Arpeggiate: ', '') ?? '';
+      return `Chord tones can be played in any order. Still needed: ${notes}`;
+    }
+    case 'MELODY':
+      return `Sequence reset. Play from note 1: ${challenge.hint ?? ''}`;
+  }
 }
 
 /**

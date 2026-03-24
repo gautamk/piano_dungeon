@@ -13,6 +13,7 @@ import {
   pickChallengeType,
   evaluateNote,
   computeEnemyDamage,
+  getTheoryTooltip,
   CHALLENGE_TYPE,
 } from './ChallengeEngine.js';
 import { NOTE_NAMES } from '../data/music.js';
@@ -140,6 +141,9 @@ export class StateMachine {
     s.battle.timerMs = s.battle.challenge.timeMs;
     s.battle.phase = 'WAITING';
     s.battle.lastResult = null;
+    s.battle.failTooltip = null;
+    s.battle.lastWrongSemitone = null;
+    s.battle.lastCorrectSemitone = null;
     // Do NOT reset _lastActedMidi here — the previous note may still be ringing
     // through speakers into the mic. Keeping the last midi prevents it from
     // instantly triggering the new challenge. Virtual keypresses bypass this
@@ -201,6 +205,15 @@ export class StateMachine {
   private _evaluateChallengeNote(note: { semitone: number; midi?: number }): void {
     const s = this.state;
     const { battle } = s;
+    // Capture expected semitone before evaluateNote may reset challenge.progress on FAIL
+    const ch = battle.challenge;
+    const expectedSemitone: number | null = (() => {
+      if (!ch) return null;
+      if (ch.type === 'CHORD') {
+        return [...ch.required].find(r => !ch.played.has(r)) ?? null;
+      }
+      return ch.sequence[ch.progress] ?? null;
+    })();
     const result = evaluateNote(battle.challenge, note);
     if (result === null) return;
 
@@ -236,11 +249,15 @@ export class StateMachine {
     }
 
     if (result === 'FAIL') {
+      battle.lastWrongSemitone = note.semitone;
+      battle.lastCorrectSemitone = expectedSemitone;
       if (battle.enemy?.isPractice) {
-        // Reset timer and let them try again — evaluateNote already reset challenge.progress
+        // Reset timer and let them try again — stay in WAITING so same challenge continues
         battle.timerMs = battle.challenge?.timeMs ?? 10000;
+        battle.lastResult = 'FAIL';
+        if (battle.challenge) battle.failTooltip = getTheoryTooltip(battle.challenge);
         spawnFeedback(s, 'Wrong note — try again!', cx, cy - 60, COLORS.warning);
-        return; // stay in WAITING phase, no HP loss
+        return;
       }
       if (!battle.enemy) return;
       const dmg = battle.enemy.attackPower;
@@ -256,6 +273,9 @@ export class StateMachine {
     battle.lastResult = result;
     battle.phase = 'RESULT';
     battle.resultTimer = RESULT_SHOW_MS;
+    if (result === 'FAIL' && battle.challenge) {
+      battle.failTooltip = getTheoryTooltip(battle.challenge);
+    }
   }
 
   private _onChallengeTimeout(): void {

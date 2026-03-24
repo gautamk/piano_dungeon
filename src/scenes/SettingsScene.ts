@@ -1,3 +1,4 @@
+import * as ex from 'excalibur';
 import type { Screen, SettingsActivationData } from '../types.js';
 import { saveSettings } from '../game/GameState.js';
 import { renderSettingsScreen, getSettingsHitRegions } from '../rendering/SettingsScreen.js';
@@ -7,6 +8,15 @@ export class SettingsScene extends GameScene<SettingsActivationData> {
   readonly screens: Screen[] = ['SETTINGS'];
 
   constructor(deps: SceneDeps) { super(deps); }
+
+  override onActivate(ctx: ex.SceneActivationContext<SettingsActivationData>): void {
+    super.onActivate(ctx);
+    // Enumerate devices without requiring mic permission so the list is always populated.
+    void this.audio.loadDevices().then(() => {
+      this.sm.state.micDevices = this.audio.devices;
+      this.sm.state.outputDevices = this.audio.outputDevices;
+    });
+  }
 
   override renderFrame(): void {
     renderSettingsScreen(this.renderer, this.sm.state);
@@ -28,10 +38,10 @@ export class SettingsScene extends GameScene<SettingsActivationData> {
       return;
     }
 
-    // Mic device selection
+    // Mic device selection (deviceId='' means Default/system)
     for (const r of regions.micDeviceItems) {
       if (this._hit(pos, r)) {
-        state.settings.micDeviceId = r.deviceId;
+        state.settings.micDeviceId = r.deviceId || null;
         saveSettings(state.settings);
         // Restart mic on the newly selected device
         if (state.settings.micEnabled) {

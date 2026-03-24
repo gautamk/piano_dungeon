@@ -66,6 +66,8 @@ export function renderPianoStrip(
     height,
     inputMode,
     showLabels = true,
+    wrongSemitone = null,
+    correctSemitone = null,
   }: {
     audioNote: DetectedNote | null;
     virtualNote: VirtualNote | null;
@@ -76,6 +78,10 @@ export function renderPianoStrip(
     height: number;
     inputMode: InputMode;
     showLabels?: boolean;
+    /** Semitone the player played on FAIL — shown in red. */
+    wrongSemitone?: number | null;
+    /** Semitone the player should have played on FAIL — shown in green. */
+    correctSemitone?: number | null;
   }
 ): void {
   const ctx = renderer.ctx;
@@ -88,6 +94,8 @@ export function renderPianoStrip(
   const activeNote = audioNote ?? virtualNote;
   const highlightSemitones = getHighlightSemitones(challenge);
 
+  const isFailMode = wrongSemitone !== null || correctSemitone !== null;
+
   // Draw white keys
   let keyX = x;
   for (let oct = PIANO_START_OCTAVE; oct < PIANO_START_OCTAVE + PIANO_NUM_OCTAVES; oct++) {
@@ -95,10 +103,14 @@ export function renderPianoStrip(
       const isHighlight = highlightSemitones.has(semitone);
       const isActive = activeNote?.semitone === semitone && activeNote?.octave === oct;
       const isVirtual = isActive && !audioNote && virtualNote;
+      const isWrong = isFailMode && semitone === wrongSemitone;
+      const isCorrect = isFailMode && semitone === correctSemitone;
 
       let color = COLORS.keys.white;
       if (isActive) color = isVirtual ? '#a3e635' : COLORS.keys.playing; // lime for virtual, green for mic
-      else if (isHighlight) color = COLORS.keys.highlight;
+      else if (isWrong) color = COLORS.danger + 'cc';    // red tint for wrong key
+      else if (isCorrect) color = COLORS.success + 'cc'; // green tint for correct key
+      else if (isHighlight && !isFailMode) color = COLORS.keys.highlight;
 
       ctx.fillStyle = color;
       ctx.fillRect(keyX, y, whiteW - 1, height);
@@ -131,10 +143,14 @@ export function renderPianoStrip(
         const isHighlight = highlightSemitones.has(nextSemitone);
         const isActive = activeNote?.semitone === nextSemitone && activeNote?.octave === oct;
         const isVirtual = isActive && !audioNote && virtualNote;
+        const isWrong = isFailMode && nextSemitone === wrongSemitone;
+        const isCorrect = isFailMode && nextSemitone === correctSemitone;
 
         let color = COLORS.keys.black;
         if (isActive) color = isVirtual ? '#65a30d' : COLORS.keys.playing;
-        else if (isHighlight) color = '#c8a000';
+        else if (isWrong) color = '#b91c1c';
+        else if (isCorrect) color = '#15803d';
+        else if (isHighlight && !isFailMode) color = '#c8a000';
 
         ctx.fillStyle = color;
         ctx.fillRect(bx, y, blackW, blackH);

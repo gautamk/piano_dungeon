@@ -58,6 +58,9 @@ export function createGameState(): GameState {
       consecutiveWrong: 0,
       isPractice: false,          // true when in a practice room (no HP loss)
       melodyChallengePhrase: 0,   // index of the next melody phrase to generate
+      failTooltip: null,
+      lastWrongSemitone: null,
+      lastCorrectSemitone: null,
     },
 
     // Song practice state (populated when entering PRACTICE screen)

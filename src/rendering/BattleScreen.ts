@@ -14,7 +14,8 @@ const H = GAME_CONFIG.canvas.height;
  */
 export function renderBattleScreen(renderer: Renderer, state: GameState): void {
   const { battle, player, audio } = state;
-  const { enemy, challenge, phase, timerMs, lastResult } = battle;
+  const { enemy, challenge, phase, timerMs, lastResult, failTooltip,
+          lastWrongSemitone, lastCorrectSemitone } = battle;
 
   if (!enemy) return;
 
@@ -28,7 +29,7 @@ export function renderBattleScreen(renderer: Renderer, state: GameState): void {
   renderPlayerPanel(renderer, player);
 
   // ── Challenge area (center)
-  renderChallengeArea(renderer, challenge, phase, timerMs, lastResult);
+  renderChallengeArea(renderer, challenge, phase, timerMs, lastResult, failTooltip);
 
   // ── Melody roll strip (between challenge area and piano, only for MELODY challenges)
   if (challenge?.type === 'MELODY') {
@@ -46,6 +47,8 @@ export function renderBattleScreen(renderer: Renderer, state: GameState): void {
     height: PIANO_LAYOUT.h,
     inputMode: audio.inputMode ?? 'none',
     showLabels: state.settings.showPianoLabels,
+    wrongSemitone: lastWrongSemitone,
+    correctSemitone: lastCorrectSemitone,
   });
 
   // ── Floor indicator
@@ -117,7 +120,8 @@ function renderChallengeArea(
   challenge: Challenge | null,
   phase: string,
   timerMs: number,
-  lastResult: string | null
+  lastResult: string | null,
+  failTooltip: string | null = null,
 ): void {
   if (!challenge) return;
 
@@ -179,6 +183,28 @@ function renderChallengeArea(
     if (entry) {
       const [txt, col] = entry;
       renderer.text(txt, cx, areaY + 185, { size: 26, color: col, align: 'center', weight: 'bold' });
+    }
+
+    // Theory tooltip on FAIL — teaching card below the result text
+    if (lastResult === 'FAIL' && failTooltip) {
+      const ctx = renderer.ctx;
+      const tipY = areaY + areaH + 10;
+      const tipW = 580;
+      renderer.rect(cx - tipW / 2, tipY, tipW, 38, COLORS.surface, 6);
+      renderer.rectStroke(cx - tipW / 2, tipY, tipW, 38, COLORS.danger + '66', 1, 6);
+      ctx.save();
+      ctx.font = '12px monospace';
+      ctx.fillStyle = COLORS.textDim;
+      ctx.textAlign = 'center';
+      ctx.textBaseline = 'middle';
+      // Truncate tooltip to fit in one line within the box
+      let tip = failTooltip;
+      const maxW = tipW - 24;
+      while (ctx.measureText(tip).width > maxW && tip.length > 8) {
+        tip = tip.slice(0, -4) + '…';
+      }
+      ctx.fillText(tip, cx, tipY + 19);
+      ctx.restore();
     }
   }
 }
