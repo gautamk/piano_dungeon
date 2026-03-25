@@ -49,7 +49,13 @@
       "Bash(xargs ls:*)",
       "Bash(npx tsc:*)",
       "Bash(find /Users/gk/Development/piano_trainer/node_modules/excalibur/build/dist -name Font* -o -name *font*)",
-      "Bash(find /Users/gk/Development/piano_trainer/node_modules/excalibur/build/dist -name Label*)"
+      "Bash(find /Users/gk/Development/piano_trainer/node_modules/excalibur/build/dist -name Label*)",
+      "Bash(FILTER_BRANCH_SQUELCH_WARNING=1 git filter-branch -f --env-filter ':*)",
+      "Bash(ls *.config.ts)",
+      "Bash(ls /Users/gk/Development/piano_trainer/*.config.*)",
+      "Bash(ls /Users/gk/Development/piano_trainer/vite*)",
+      "Bash(grep -n 'localStorage\\\\|stubGlobal' /Users/gk/Development/piano_trainer/src/__tests__/*.test.ts)",
+      "Bash(bun x:*)"
     ]
   }
 }
